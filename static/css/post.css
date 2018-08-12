@@ -11,7 +11,6 @@
   font-weight: 700;
 }
 body {
-  font-size: 1.2rem;
   font-family: Merriweather, serif;
   color: #000;
   max-width: 720px;
@@ -62,6 +61,10 @@ div.date span {
   color: #999;
 }
 
+p {
+  line-height: 1.75em;
+}
+
 @media (max-width: 319px) {
   body {
     width: 90%;
@@ -96,7 +99,7 @@ div.date span {
   }
 
   nav {
-    margin: 1rem 0 0 1rem;
+    margin: 1rem 0 0 0;
   }
 }
 
@@ -104,6 +107,7 @@ div.date span {
   body {
     margin: 0 auto;
     padding: 0;
+    font-size: 1.2rem;
   }
 
   footer {
@@ -111,6 +115,6 @@ div.date span {
   }
 
   nav {
-    margin: 1rem 0 2rem 1rem;
+    margin: 1rem 0 2rem 0;
   }
 }
