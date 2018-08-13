@@ -2,6 +2,12 @@
 title: Is this finally working? Oh, hello world!
 ---
 
+Hey let's write here something that's actually readable so I can figure out
+the correct spacings ok? Just add a bit more text to get multiple lines. We
+are almost done. Ok, this should be enough, don't you think? Yeah, I agree.
+
+<!--more-->
+
 Fusce tortor quam, egestas in posuere quis, porttitor vel turpis. Donec
 vulputate porttitor augue at rhoncus. Proin iaculis consectetur sagittis.
 Curabitur venenatis turpis sit amet purus tristique nec posuere risus laoreet.

@@ -1,7 +1,10 @@
-<ul>
+<section>
     $for(posts)$
-        <li>
-            <a href="$url$">$title$</a> - $date$
-        </li>
+      <div class="recent-post">
+        <h3><a href="$url$">$title$</a></h3>
+        <div class="date"><span>$date$</span></div>
+        $teaser$
+        <p class="read-more"><a href="$url$">Read more →</a></p>
+      </div>
     $endfor$
-</ul>
+</section>

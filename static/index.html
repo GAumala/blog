@@ -1,16 +1,23 @@
----
-title: Hello World
----
-
-<h2>Welcome</h2>
-
-<img src="/images/haskell-logo.png" style="float: right; margin: 10px;" />
-
-<p>Welcome to my blog!</p>
-
-<p>I've reproduced a list of recent posts here for your reading pleasure:</p>
-
-<h2>Posts</h2>
-$partial("templates/post-list.html")$
-
-<p>…or you can find more in the <a href="/archive.html">archives</a>.</p>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>My Blog</title>
+    <link rel="stylesheet" href="../css/index.css" />
+  </head>
+  <body>
+    <h1>My Blog</h1>
+    <p class="info"> Hi, I'm Gabriel, a guy in Ecuador interested in computers and
+    programming. Most of my projects are open source and you can check them out
+    on GitHub. Occasionally, I write stuff here.</p>
+    <nav>
+      <a href="https://twitter.com/siegvriel" title="Twitter profile">
+        <img id="twitter" src="../images/twitter.svg" alt="Twitter"></a>
+      <a href="https://github.com/GAumala" title="GitHub profile">
+        <img id="github" src="../images/github.svg" alt="GitHub"></a>
+    </nav>
+    $partial("templates/post-list.html")$
+  </body>
+</html>
