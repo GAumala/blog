@@ -1,4 +1,5 @@
 static/.stack-work/
 static/_cache/
 static/_site/
+api/*.sqlite
 *~
