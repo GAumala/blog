@@ -8,6 +8,9 @@ import Web.Scotty (get, json, param, post, scotty, status, text, ActionM,
   ScottyM)
 
 import Database.Queries (incrementLikesCount)
+import Data.Models (
+  ReaderInfo (ReaderInfo, ipAddress, userAgent),
+  LikeInfo (LikeInfo, readerInfo, postStringId))
 
 getLikes :: ActionM ()
 getLikes = text "0"
@@ -23,5 +26,11 @@ runBlogAPI = do
 main :: IO ()
 main = do
   conn <- SQLite.open "api.sqlite"
-  incrementLikesCount conn "192.168.0.1" "Mozilla/Linux/Firefox 57" "2018-08-16"
+  let newReaderInfo = ReaderInfo { 
+    ipAddress = "192.168.0.1", 
+    userAgent = "Mozilla/Linux/Firefox 57" }
+  let newLikeInfo = LikeInfo { 
+    postStringId = "2018-08-16", 
+    readerInfo = newReaderInfo }
+  incrementLikesCount conn newLikeInfo 
   scotty 8008 runBlogAPI

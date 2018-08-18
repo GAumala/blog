@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-} 
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE NamedFieldPuns #-}
 
 module Database.Queries (incrementLikesCount) where
 
@@ -14,6 +15,9 @@ import qualified Database.Beam.Backend.SQL.BeamExtensions as BeamExt
 import Database.SQLite.Simple (Connection, withTransaction)
 import qualified Data.Text as Text
 
+import Data.Models (
+  ReaderInfo (ReaderInfo, ipAddress, userAgent),
+  LikeInfo (LikeInfo, readerInfo, postStringId))
 import Database.Schema (
   BlogDB(_blogLikes, _blogPosts, _blogReaders),
   Like, 
@@ -63,18 +67,18 @@ getPostKey stringId = do
     Just post -> return $ pk post
     Nothing -> insertNewPost stringId
 
-getReaderKey :: Text.Text -> Text.Text -> SqliteM (PrimaryKey ReaderT Identity)
-getReaderKey ipAddress userAgent = do
+getReaderKey :: ReaderInfo -> SqliteM (PrimaryKey ReaderT Identity)
+getReaderKey (ReaderInfo { ipAddress, userAgent }) = do
   maybeReader <- findReader ipAddress userAgent
   case maybeReader of
     Just reader -> return $ pk reader
     Nothing -> insertNewReader ipAddress userAgent
 
 
-incrementLikesCount :: Connection -> Text.Text -> Text.Text -> Text.Text -> IO ()
-incrementLikesCount conn ipAddress userAgent postStringId = 
+incrementLikesCount :: Connection -> LikeInfo -> IO ()
+incrementLikesCount conn (LikeInfo {readerInfo, postStringId }) = 
   withTransaction conn $ runBeamSqliteDebug putStrLn conn $ do
     postKey <- getPostKey postStringId
-    readerKey <- getReaderKey ipAddress userAgent
+    readerKey <- getReaderKey readerInfo
     insertNewLike readerKey postKey
   
