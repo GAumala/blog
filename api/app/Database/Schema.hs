@@ -1,10 +1,8 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-} 
-{-# LANGUAGE DuplicateRecordFields #-}
 
 module Database.Schema (
   BlogDB(_blogLikes, _blogPosts, _blogReaders),

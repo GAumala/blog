@@ -1,10 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-} 
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiParamTypeClasses #-} 
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Database.Queries (incrementLikesCount) where
@@ -74,10 +67,12 @@ getReaderKey (ReaderInfo { ipAddress, userAgent }) = do
     Just reader -> return $ pk reader
     Nothing -> insertNewReader ipAddress userAgent
 
+runDB :: Connection -> SqliteM () -> IO ()
+runDB = runBeamSqliteDebug putStrLn
 
 incrementLikesCount :: Connection -> LikeInfo -> IO ()
 incrementLikesCount conn (LikeInfo {readerInfo, postStringId }) = 
-  withTransaction conn $ runBeamSqliteDebug putStrLn conn $ do
+  withTransaction conn $ runDB conn $ do
     postKey <- getPostKey postStringId
     readerKey <- getReaderKey readerInfo
     insertNewLike readerKey postKey
