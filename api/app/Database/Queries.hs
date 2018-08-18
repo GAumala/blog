@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies #-} 
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiParamTypeClasses #-} 
@@ -11,7 +11,7 @@ module Database.Queries (incrementLikesCount) where
 import Database.Beam
 import Database.Beam.Sqlite
 import qualified Database.Beam.Backend.SQL.BeamExtensions as BeamExt
-import Database.SQLite.Simple (open, Connection)
+import Database.SQLite.Simple (Connection, withTransaction)
 import qualified Data.Text as Text
 
 import Database.Schema (
@@ -70,9 +70,11 @@ getReaderKey ipAddress userAgent = do
     Just reader -> return $ pk reader
     Nothing -> insertNewReader ipAddress userAgent
 
+
 incrementLikesCount :: Connection -> Text.Text -> Text.Text -> Text.Text -> IO ()
-incrementLikesCount conn ipAddress userAgent postStringId = runBeamSqliteDebug putStrLn conn $ do
-  postKey <- getPostKey postStringId
-  readerKey <- getReaderKey ipAddress userAgent
-  insertNewLike readerKey postKey
+incrementLikesCount conn ipAddress userAgent postStringId = 
+  withTransaction conn $ runBeamSqliteDebug putStrLn conn $ do
+    postKey <- getPostKey postStringId
+    readerKey <- getReaderKey ipAddress userAgent
+    insertNewLike readerKey postKey
   
