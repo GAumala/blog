@@ -7,7 +7,7 @@ import qualified Database.SQLite.Simple  as SQLite
 import Web.Scotty (get, json, param, post, scotty, status, text, ActionM, 
   ScottyM)
 
-import DB (incrementLikesCount)
+import Database.Queries (incrementLikesCount)
 
 getLikes :: ActionM ()
 getLikes = text "0"
