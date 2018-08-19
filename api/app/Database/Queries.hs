@@ -1,6 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
-module Database.Queries (incrementLikesCount) where
+module Database.Queries (incrementLikesCount, getLikesCount) where
 
 import Database.Beam
 import Database.Beam.Sqlite
@@ -77,13 +77,25 @@ getReaderKey readerInfo = do
     Just reader -> return $ pk reader
     Nothing -> insertNewReader readerInfo
 
-runDB :: Connection -> SqliteM () -> IO ()
+getPostLikesCount :: Text.Text -> SqliteM (Maybe Int)
+getPostLikesCount postStringId = runSelectReturningOne $ select $
+  aggregate_ (\_ -> countAll_) $ do
+    posts <- all_ (_blogPosts blogDb)
+    likes <- oneToMany_ (_blogLikes blogDb) _likePostKey posts    
+    guard_ (_postStringId posts ==. val_ postStringId)
+    pure likes
+
+runDB :: Connection -> SqliteM a -> IO a
 runDB = runBeamSqliteDebug putStrLn
 
-incrementLikesCount :: Connection -> LikeInfo -> IO ()
+incrementLikesCount :: Connection -> LikeInfo -> IO (Maybe Int)
 incrementLikesCount conn (LikeInfo {readerInfo, postStringId }) = 
   withTransaction conn $ runDB conn $ do
     postKey <- getPostKey postStringId
     readerKey <- getReaderKey readerInfo
     insertNewLike readerKey postKey
+    getPostLikesCount postStringId
   
+getLikesCount :: Connection -> Text.Text -> IO (Maybe Int)
+getLikesCount conn postStringId = runDB conn 
+  $ getPostLikesCount postStringId

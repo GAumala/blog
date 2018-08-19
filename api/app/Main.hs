@@ -8,7 +8,7 @@ import Web.Scotty (get, post, scotty, ActionM, ScottyM)
 
 runBlogAPI :: SQLite.Connection -> ScottyM () 
 runBlogAPI conn = do
-  get "/likes" getLikes
+  get "/likes/:stringId" $ getLikes conn
   post "/likes/:stringId" $ postLike conn
 
 main :: IO ()
