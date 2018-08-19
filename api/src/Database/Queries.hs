@@ -86,7 +86,8 @@ getPostLikesCount postStringId = runSelectReturningOne $ select $
     pure likes
 
 runDB :: Connection -> SqliteM a -> IO a
-runDB = runBeamSqliteDebug putStrLn
+-- runDB = runBeamSqliteDebug putStrLn
+runDB = runBeamSqlite
 
 incrementLikesCount :: Connection -> LikeInfo -> IO (Maybe Int)
 incrementLikesCount conn (LikeInfo {readerInfo, postStringId }) = 
