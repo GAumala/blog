@@ -11,10 +11,10 @@ module Database.Schema (
   Post, 
   PostT(Post, _postStringId),
   Reader, 
-  ReaderT(Reader, _readerIpAddress, _readerUserAgent),
+  ReaderT(Reader, _readerId, _readerIpAddress, _readerUserAgent),
   blogDb) where
 
-import qualified Data.Text as Text
+import qualified Data.Text.Lazy as Text
 import Database.Beam
 
 -- specify types for the tables

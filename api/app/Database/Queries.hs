@@ -6,11 +6,13 @@ import Database.Beam
 import Database.Beam.Sqlite
 import qualified Database.Beam.Backend.SQL.BeamExtensions as BeamExt
 import Database.SQLite.Simple (Connection, withTransaction)
-import qualified Data.Text as Text
+import qualified Data.Text.Lazy as Text
 
 import Data.Models (
+  IPAddress (IPAddress, unwrapIPAddress),
   ReaderInfo (ReaderInfo, ipAddress, userAgent),
-  LikeInfo (LikeInfo, readerInfo, postStringId))
+  LikeInfo (LikeInfo, readerInfo, postStringId),
+  UserAgent (UserAgent, unwrapUserAgent))
 import Database.Schema (
   BlogDB(_blogLikes, _blogPosts, _blogReaders),
   Like, 
@@ -18,7 +20,7 @@ import Database.Schema (
   Post,
   PostT(Post, _postStringId),
   Reader, 
-  ReaderT(Reader, _readerIpAddress, _readerUserAgent),
+  ReaderT(Reader, _readerId, _readerIpAddress, _readerUserAgent),
   blogDb)
 
 findPostByStringId :: Text.Text -> SqliteM (Maybe Post)
@@ -28,12 +30,14 @@ findPostByStringId targetStringId =
     $ filter_ (\row -> _postStringId row ==. val_ targetStringId)
     $ all_ (_blogPosts blogDb)
 
-findReader :: Text.Text -> Text.Text -> SqliteM (Maybe Reader)
-findReader ipAddress userAgent = 
+findReader :: ReaderInfo -> SqliteM (Maybe Reader)
+findReader (ReaderInfo {ipAddress, userAgent}) = do
+  let ipAddressText = unwrapIPAddress ipAddress 
+      userAgentText = unwrapUserAgent userAgent 
   runSelectReturningOne 
     $ select
-    $ filter_ (\row -> _readerIpAddress row ==. val_ ipAddress 
-                   &&. _readerUserAgent row ==. val_ userAgent)
+    $ filter_ (\row -> _readerIpAddress row ==. val_ ipAddressText
+                   &&. _readerUserAgent row ==. val_ userAgentText)
     $ all_ (_blogReaders blogDb)
 
 insertNewPost :: Text.Text -> SqliteM (PrimaryKey PostT Identity)
@@ -42,10 +46,16 @@ insertNewPost stringId = do
                  $ insertExpressions [ Post default_ (val_ stringId) ]
   return $ pk newPost
 
-insertNewReader :: Text.Text -> Text.Text -> SqliteM (PrimaryKey ReaderT Identity)
-insertNewReader ipAddress userAgent = do
+insertNewReader :: ReaderInfo -> SqliteM (PrimaryKey ReaderT Identity)
+insertNewReader (ReaderInfo { ipAddress, userAgent }) = do
   [newReader] <- BeamExt.runInsertReturningList (_blogReaders blogDb) 
-                 $ insertExpressions [ Reader default_ (val_ ipAddress) (val_ userAgent)]
+                 $ insertExpressions [ 
+                     Reader { 
+                       _readerId =  default_, 
+                       _readerIpAddress = val_ $ unwrapIPAddress ipAddress,
+                       _readerUserAgent = val_ $ unwrapUserAgent userAgent 
+                     } 
+                   ]
   return $ pk newReader
 
 insertNewLike :: (PrimaryKey ReaderT Identity) -> (PrimaryKey PostT Identity) -> SqliteM ()
@@ -61,11 +71,11 @@ getPostKey stringId = do
     Nothing -> insertNewPost stringId
 
 getReaderKey :: ReaderInfo -> SqliteM (PrimaryKey ReaderT Identity)
-getReaderKey (ReaderInfo { ipAddress, userAgent }) = do
-  maybeReader <- findReader ipAddress userAgent
+getReaderKey readerInfo = do
+  maybeReader <- findReader readerInfo
   case maybeReader of
     Just reader -> return $ pk reader
-    Nothing -> insertNewReader ipAddress userAgent
+    Nothing -> insertNewReader readerInfo
 
 runDB :: Connection -> SqliteM () -> IO ()
 runDB = runBeamSqliteDebug putStrLn
