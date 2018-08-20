@@ -1,0 +1,64 @@
+#heart {
+  background: url("../images/heart_spritesheet.png");
+  background-position: left;
+  background-repeat: no-repeat;
+  height: 100px;
+  width: 100px;
+  cursor: pointer;
+  background-size:2900px; //actual background size 2900px
+}
+
+#heart:hover
+{
+  background-position: right; //displaying last heart frame 
+}
+
+// animation code
+@-webkit-keyframes heartBlast
+{
+  0% {background-position: left;}
+  100% {background-position: right;}
+}
+
+@keyframes heartBlast
+{
+  0% {background-position: left;}
+  100% {background-position: right;}
+}
+
+.heartAnimation
+{
+  -webkit-animation-name: heartBlast; //webkit broswers
+  animation-name: heartBlast;
+  -webkit-animation-duration: .8s;
+  animation-duration: .8s;
+  -webkit-animation-iteration-count: 1;
+  animation-iteration-count: 1;
+  -webkit-animation-timing-function: steps(28); //background frames count 28
+  animation-timing-function: steps(28);
+  background-position: right;
+}
+
+.like-me {
+  height: 100px;
+  position: relative;
+}
+.like-pls {
+  text-align: center;
+}
+
+table > tr {
+  height:100px;
+}
+.like-me  {
+  width: 100px;
+}
+
+.like-count {
+  position: absolute;
+  width: 100px;
+  text-align: center;
+  left: 0;
+  bottom: 2px;
+}
+
