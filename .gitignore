@@ -1,5 +1,9 @@
+api/*.sqlite
+frontend/node_modules
 static/.stack-work/
 static/_cache/
 static/_site/
-api/*.sqlite
+static/images/heart_spritesheet.png
+static/js/like.js
+static/css/like.css
 *~

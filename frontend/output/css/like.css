@@ -26,7 +26,7 @@
   100% {background-position: right;}
 }
 
-.heartAnimation
+.heart-animation
 {
   -webkit-animation-name: heartBlast; //webkit broswers
   animation-name: heartBlast;
@@ -43,22 +43,42 @@
   height: 100px;
   position: relative;
 }
-.like-pls {
+.like-me p {
+  height: 100px;
+  line-height: 100px;
   text-align: center;
+  margin: 0;
 }
 
-table > tr {
-  height:100px;
-}
-.like-me  {
-  width: 100px;
+.like-me > * {
+  display: inline-block;
+  float: left;
 }
 
-.like-count {
+#like-count {
   position: absolute;
+  font-family: OpenSans, sans-serif;
+  font-weight: bold;
   width: 100px;
+  color: #aab8c2;
   text-align: center;
   left: 0;
-  bottom: 2px;
+  bottom: 8px;
 }
 
+#like-count.liked {
+  color: #e2264d;
+}
+
+.pls-like {
+  font-family: OpenSans, sans-serif;
+  font-size: 1.0rem;
+}
+
+.like-footer {
+  margin: 0 0 2rem 0;
+}
+
+@media (min-width: 760px) {
+  font-size: 1.1rem;
+}

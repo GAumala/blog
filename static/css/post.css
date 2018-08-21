@@ -10,6 +10,13 @@
   src: url("../fonts/OpenSans-Bold.ttf");
   font-weight: 700;
 }
+
+@font-face {
+  font-family: OpenSans;
+  src: url("../fonts/OpenSans-Regular.ttf");
+  font-weight: 400;
+}
+
 body {
   font-family: Merriweather, serif;
   color: #000;
@@ -64,6 +71,11 @@ div.date span {
 
 p {
   line-height: 1.75em;
+}
+
+div.footer-separator {
+  color: #aaa;
+  border-bottom: 1px solid #aaa;
 }
 
 @media (max-width: 319px) {
