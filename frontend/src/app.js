@@ -1,4 +1,5 @@
 import m from "mithril";
+import { incrementLikesCount, getLikesCount } from "./api.js"
 
 const LikeCounter = {
   view: ({ attrs: { liked, likesCount } }) => 
@@ -17,14 +18,39 @@ const LikeButton = {
 }
 
 const app = () => {
-  let likesCount = 0;
+  let likesCount = "??";
   let liked = false;
+  let lastCountFromServer = "??"
+  let footerMsg = "If you liked this post, please hit this like button to show your appreciation."
+
+  const updateLikesCounter = newValue => { 
+    likesCount = newValue; 
+    lastCountFromServer = newValue; 
+  }
+
+  const undoLike = () => {
+    liked = false;
+    likesCount = lastCountFromServer;  
+    footerMsg = "Oops! Something went wrong. Please try again in a few seconds."
+  }
 
   const onLikeButtonClicked = () => { 
-    likesCount += 1;
     liked = true; 
+    if (typeof likesCount == "number") 
+      likesCount += 1;
+
+    incrementLikesCount()
+      .then(newValue => {
+        updateLikesCounter(newValue);
+        footerMsg = "Thank you!"
+      })
+      .catch(undoLike);
   }
+
   return ({
+    oncreate: () =>
+      getLikesCount().then(updateLikesCounter, () => {}),
+
     view: () => 
       <table className="like-footer">
         <tr>
@@ -34,8 +60,7 @@ const app = () => {
               onLikeButtonClicked={liked ? null : onLikeButtonClicked}/>
           </td>
           <td className="pls-like">
-            <em>If you liked this post, please hit this like button to show your
-            appreciation.</em>
+            <em>{footerMsg}</em>
           </td>
         </tr>
       </table>

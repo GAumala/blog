@@ -3,8 +3,6 @@ frontend/node_modules
 static/.stack-work/
 static/_cache/
 static/_site/
-static/images/heart_spritesheet.png
 static/js/like.js
-static/css/like.css
 frontend/output/js/like.js
 *~
