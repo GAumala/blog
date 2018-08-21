@@ -35,7 +35,7 @@ const app = () => {
           </td>
           <td className="pls-like">
             <em>If you liked this post, please hit this like button to show your
-            appreciation. Thank you!</em>
+            appreciation.</em>
           </td>
         </tr>
       </table>
