@@ -64,6 +64,7 @@
 #like-count {
   position: absolute;
   font-family: OpenSans, sans-serif;
+  font-weight: bold;
   width: 100px;
   color: #aab8c2;
   text-align: center;
@@ -84,8 +85,9 @@
   margin: 0 0 2rem 0;
 }
 
-hr {
-  border-top: 1px solid #aaa;
+div.footer-separator {
+  color: #aaa;
+  border-bottom: 1px solid #aaa;
 }
 
 @media (min-width: 760px) {
