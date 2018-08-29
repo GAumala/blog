@@ -27,6 +27,7 @@ dependencies:
 - http-types
 - scotty
 - text
+- warp
 
 library:
   source-dirs: src

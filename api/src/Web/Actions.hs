@@ -1,8 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Web.Actions (getLikes, postLike) where
+module Web.Actions (errorHandler, getLikes, postLike) where
 
-import Data.Text.Lazy (pack)
+import Control.Monad.IO.Class (liftIO)
+import Data.Text.Lazy (Text, pack)
+import Data.Text.Lazy.IO (putStrLn)
 import Network.HTTP.Types.Status (ok200)
 import qualified Database.SQLite.Simple  as SQLite
 import Web.Scotty (json, liftAndCatchIO, param, status, text, ActionM)
@@ -45,3 +47,5 @@ getLikes conn = do
   Just likesCount <- getLikesCount conn postStringId
   respondWithLikesCount likesCount
 
+errorHandler :: Text -> ActionM ()
+errorHandler errorMessage = liftIO $ Data.Text.Lazy.IO.putStrLn errorMessage
