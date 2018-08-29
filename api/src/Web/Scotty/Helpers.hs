@@ -38,7 +38,7 @@ getIpAddress = do
 
 whenValid :: Either APIError b -> (b -> ActionM ()) -> ActionM ()
 whenValid (Left (APIError { httpStatus, msg })) _ = do 
-  status ok200
+  status httpStatus
   text msg
 whenValid (Right value) fn = fn value
 
