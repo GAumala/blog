@@ -1,22 +1,3 @@
-
-@font-face {
-  font-family: Merriweather;
-  src: url("../fonts/Merriweather-Light.ttf");
-  font-weight: 400;
-}
-
-@font-face {
-  font-family: OpenSans;
-  src: url("../fonts/OpenSans-Bold.ttf");
-  font-weight: 700;
-}
-
-@font-face {
-  font-family: OpenSans;
-  src: url("../fonts/OpenSans-Regular.ttf");
-  font-weight: 400;
-}
-
 body {
   font-family: Merriweather, serif;
   color: #000;
