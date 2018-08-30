@@ -4,36 +4,32 @@ module Main where
 
 import Data.Foldable (forM_)
 import qualified Database.SQLite.Simple  as SQLite
-import Web.Scotty (defaultHandler, get, post, text, scottyOpts, ActionM, ScottyM)
-import Debug.Trace
+import Web.Scotty (defaultHandler, get, post, scottyOpts, ActionM, ScottyM)
 
 import Data.Config (
   BlogConfig(BlogConfig), 
   loadConfig,
   )
 import Options (optionsFromConfig)
-import Web.Actions (errorHandler, getLikes, postLike)
+import Web.Actions (errorHandler, getLikes, postLike, updateStaticContent)
 import Web.RoutesContext (
   RoutesContext(RoutesContext), 
   ctx_conn, 
-  ctx_maybeCIScript,
+  ctx_maybeContentDir,
   initRoutesContext
   )
-
-updateStaticContent :: ActionM () 
-updateStaticContent = text "ok"
 
 runBlogAPI :: RoutesContext -> ScottyM () 
 runBlogAPI ctx = do
   let RoutesContext { 
     ctx_conn = conn, 
-    ctx_maybeCIScript = maybeCIScript 
+    ctx_maybeContentDir = maybeContentDir 
     } = ctx
 
   get "/likes/:stringId" $ getLikes conn
   post "/like/:stringId" $ postLike conn
-  forM_ maybeCIScript $ \ ciScript ->
-    post "/ci-hook" $ updateStaticContent
+  forM_ maybeContentDir $ \ contentDir ->
+    post "/ci-hook" $ updateStaticContent contentDir
 
   defaultHandler errorHandler
 

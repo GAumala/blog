@@ -23,8 +23,11 @@ dependencies:
 - base >= 4.7 && < 5
 - beam-core
 - beam-sqlite
-- sqlite-simple
+- directory
+- filepath
 - http-types
+- process
+- sqlite-simple
 - scotty
 - text
 - warp
@@ -54,5 +57,6 @@ tests:
     dependencies:
     - api
     - directory
+    - filepath
     - hspec 
     - process

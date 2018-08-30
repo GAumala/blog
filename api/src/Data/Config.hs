@@ -4,18 +4,20 @@ module Data.Config (
   BlogConfig(BlogConfig), 
   cfg_port, 
   cfg_dbFile, 
-  cfg_maybeCIScript, 
+  cfg_maybeContentDir, 
   loadConfig
 ) where
 
 import qualified Database.SQLite.Simple  as SQLite
+import System.FilePath ((</>))
+import System.Directory (doesFileExist)
 import System.Environment (lookupEnv)
 import Text.Read (readMaybe)
 
 data BlogConfig = BlogConfig { 
   cfg_port :: Int, 
   cfg_dbFile :: FilePath, 
-  cfg_maybeCIScript :: Maybe FilePath  
+  cfg_maybeContentDir :: Maybe FilePath  
 }
 
 defaultPort :: Int
@@ -40,14 +42,20 @@ lookupSqliteFileInEnv = do
     Just filePath -> return filePath
     Nothing -> error "SQLITE_FILE environment variable not set. You must provide a valid file path to open the SQLite database."
 
-lookupCIScriptInEnv :: IO (Maybe FilePath)
-lookupCIScriptInEnv = do 
-  maybeFilePath <- lookupEnv "UPDATE_SCRIPT"
+lookupContentDirInEnv :: IO (Maybe FilePath)
+lookupContentDirInEnv = do 
+  maybeFilePath <- lookupEnv "CONTENT_DIR"
   case maybeFilePath of
-    Just filePath -> return $ Just filePath
+    Just filePath -> do
+       fileExists <- doesFileExist $ filePath </> "update.sh"
+       if fileExists then return $ Just filePath else do 
+         putStrLn $ "\"update.sh\" not found in directory \"" ++ filePath ++ 
+           "\". CI web hook is disabled unless you provide a valid path to the directory that contains an \"update.sh\" script to run on every invocation."
+         return Nothing
+
     Nothing -> do 
-      putStrLn "UPDATE_SCRIPT environment variable not set. CI web hook is disabled unless you provide a valid file path with the script to run when it is triggered."
+      putStrLn "CONTENT_DIR environment variable not set. CI web hook is disabled unless you provide a valid path to the directory that contains an \"update.sh\" script to run on every invocation."
       return Nothing
 
 loadConfig :: IO BlogConfig
-loadConfig = BlogConfig <$> lookupPortInEnv <*> lookupSqliteFileInEnv <*> lookupCIScriptInEnv
+loadConfig = BlogConfig <$> lookupPortInEnv <*> lookupSqliteFileInEnv <*> lookupContentDirInEnv
