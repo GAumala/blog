@@ -9,15 +9,13 @@ import Network.HTTP.Types.Status (ok200, internalServerError500)
 import qualified Database.SQLite.Simple  as SQLite
 import System.Exit (ExitCode (ExitSuccess, ExitFailure))
 import System.Scripts (runUpdateScriptAtDir)
-import Web.Scotty (json, liftAndCatchIO, param, status, text, ActionM)
+import Web.Scotty (param, status, text, ActionM)
 
 import Data.Models (
-  IPAddress (IPAddress),
-  ReaderInfo (ReaderInfo, ipAddress, userAgent),
-  LikeInfo (LikeInfo, readerInfo, postStringId),
-  UserAgent (UserAgent))
+  ReaderInfo (ReaderInfo),
+  LikeInfo (LikeInfo))
 import Web.Scotty.Helpers (
-  APIError (httpStatus, msg), 
+  APIError,
   getIpAddress, 
   getUserAgent,
   whenValid) 

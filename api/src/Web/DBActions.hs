@@ -7,8 +7,7 @@ import Database.SQLite.Simple (Connection)
 import Web.Scotty (liftAndCatchIO, ActionM)
 
 import qualified Database.Queries as Q
-import Data.Models (
-  LikeInfo (LikeInfo, readerInfo, postStringId))
+import Data.Models (LikeInfo)
 
 class DBClient m where
   incrementLikesCount :: Connection -> LikeInfo -> m (Maybe Int)

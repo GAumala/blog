@@ -9,14 +9,13 @@ import Database.SQLite.Simple (Connection, withTransaction)
 import qualified Data.Text.Lazy as Text
 
 import Data.Models (
-  IPAddress (IPAddress, unwrapIPAddress),
+  IPAddress (unwrapIPAddress),
   ReaderInfo (ReaderInfo, ipAddress, userAgent),
   LikeInfo (LikeInfo, readerInfo, postStringId),
-  UserAgent (UserAgent, unwrapUserAgent))
+  UserAgent (unwrapUserAgent))
 import Database.Schema (
   BlogDB(_blogLikes, _blogPosts, _blogReaders),
-  Like, 
-  LikeT(Like, _likeReaderKey, _likePostKey),
+  LikeT(Like, _likePostKey),
   Post,
   PostT(Post, _postStringId),
   Reader, 

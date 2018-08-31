@@ -5,6 +5,7 @@ import System.IO (IOMode(WriteMode))
 import System.Exit (ExitCode)
 import GHC.IO.Handle.FD (openFile)
 
+updateScript :: CreateProcess
 updateScript = proc "bash" ["-eo", "pipefail", "update.sh"]
 
 runUpdateScriptAtDir :: FilePath -> IO ExitCode

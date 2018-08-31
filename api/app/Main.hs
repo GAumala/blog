@@ -2,16 +2,12 @@
 
 module Main where
 
-import Data.Foldable (forM_)
-import qualified Database.SQLite.Simple  as SQLite
-import Web.Scotty (defaultHandler, get, post, scottyOpts, ActionM, ScottyM)
+import Web.Scotty (defaultHandler, get, post, scottyOpts, ScottyM)
 
-import Data.Config (
-  BlogConfig(BlogConfig), 
-  loadConfig,
-  )
+import Data.Config (loadConfig)
 import Options (optionsFromConfig)
 import Web.Actions (errorHandler, getLikes, postLike, updateStaticContent)
+import Data.Foldable (forM_)
 import Web.RoutesContext (
   RoutesContext(RoutesContext), 
   ctx_conn, 

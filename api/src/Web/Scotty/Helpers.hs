@@ -8,7 +8,7 @@ module Web.Scotty.Helpers (
   whenValid) where
 
 import Data.Text.Lazy (Text)
-import Network.HTTP.Types.Status (Status, badRequest400, ok200, status500)
+import Network.HTTP.Types.Status (Status, badRequest400, status500)
 import Web.Scotty (ActionM, header, status, text) 
 
 import Data.Models (

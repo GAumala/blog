@@ -8,7 +8,6 @@ module Data.Config (
   loadConfig
 ) where
 
-import qualified Database.SQLite.Simple  as SQLite
 import System.FilePath ((</>))
 import System.Directory (doesFileExist)
 import System.Environment (lookupEnv)
