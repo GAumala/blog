@@ -1,0 +1,66 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: gaumala/blog-arch:0.1
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Cached Dependencies
+          keys:
+            # find a cache for the same stack.yaml
+            - deps-{{ checksum "static/stack.yaml" }}-{{ checksum "api/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
+            # when missing reuse the latest cache
+            - deps-
+      - run:
+          name: Resolve/Update Static Site Dependencies
+          command: |
+            cd static 
+            stack setup
+            stack build --dependencies-only
+      - run:
+          name: Resolve/Update API Server Dependencies
+          command: |
+            cd api 
+            stack setup
+            stack build --dependencies-only
+      - run:
+          name: Resolve/Update Frontend Dependencies
+          command: |
+            cd frontend 
+            yarn
+            stack build --dependencies-only
+      - save_cache:
+          name: Cache Dependencies
+          key: deps-{{ checksum "static/stack.yaml" }}-{{ checksum "api/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
+          paths:
+            - ~/.stack
+            - ./static/.stack-work
+            - ./api/.stack-work
+            - ./frontend/node_modules
+      - run:
+          name: Build API App
+          command: |
+            cd api 
+            stack build --pedantic
+      - run:
+          name: Build Static Site App
+          command: |
+            cd static
+            stack build --pedantic
+      - run:
+          name: Build Frontend App
+          command: |
+            cd frontend
+            bash deploy.sh
+      - run:
+          name: Build Static Site
+          command: |
+            cd static
+            stack exec site build
+      - run:
+          name: Test API App
+          command: |
+            cd api
+            stack test
+      
