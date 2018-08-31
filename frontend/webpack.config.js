@@ -1,7 +1,10 @@
 const path = require('path')
 
 module.exports = {
-  entry: './src/index.js',
+  entry: {
+    home: './src/home.index.js',
+    post: './src/post.index.js'
+  },
   devServer: {
     contentBase: path.resolve(__dirname, '../static/_site'),
     publicPath: '/js/',
@@ -16,7 +19,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname, './output/js'),
-    filename: 'like.js',
+    filename: '[name].js',
   },
   module: {
     rules: [{

@@ -1,2 +1,2 @@
 yarn build
-cp ./output/js/like.js ../static/js
+cp ./output/js/* ../static/js

@@ -5,8 +5,8 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>My Blog</title>
-    <noscript>
-      <link id="fontfaces" rel="stylesheet" href="/css/font-faces.css" />
+    <noscript id="fontfaces">
+      <link rel="stylesheet" href="/css/font-faces.css" />
     </noscript>
     <link rel="stylesheet" href="/css/index.css" />
   </head>
@@ -22,5 +22,6 @@
         <img id="github" src="../images/github.svg" alt="GitHub"></a>
     </nav>
     $partial("templates/post-list.html")$
+    <script src="/js/home.js"></script>
   </body>
 </html>
