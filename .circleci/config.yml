@@ -8,8 +8,7 @@ jobs:
       - restore_cache:
           name: Restore Cached Dependencies
           keys:
-            # find a cache for the same stack.yaml
-            - deps-{{ checksum "api/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
+            - deps-{{ checksum "api/stack.yaml" }}-{{ checksum "static/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
             # when missing reuse the latest cache
             - deps-
       - run:
@@ -19,16 +18,25 @@ jobs:
             stack setup
             stack build --test --dependencies-only
       - run:
+          name: Resolve/Update Static Site Dependencies
+          command: |
+            cd static 
+            stack setup
+            # this is pretty big so disable optimizations and limit
+            # to one job to avoid running out of memory
+            stack build --dependencies-only -j1 --ghc-options -O0 
+      - run:
           name: Resolve/Update Frontend Dependencies
           command: |
             cd frontend 
             yarn
       - save_cache:
           name: Cache Dependencies
-          key: deps-{{ checksum "api/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
+          key: deps-{{ checksum "api/stack.yaml" }}--{{ checksum "static/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
           paths:
             - ~/.stack
             - ./api/.stack-work
+            - ./static/.stack-work
             - ./frontend/node_modules
       - run:
           name: Build Frontend App
@@ -45,4 +53,14 @@ jobs:
           command: |
             cd api
             stack test
+      - run:
+          name: Build Static Site Generator
+          command: |
+            cd static
+            stack build --pedantic --ghc-options -fno-warn-type-defaults
+      - run:
+          name: Generate Pages
+          command: |
+            cd static
+            stack exec site build
       
