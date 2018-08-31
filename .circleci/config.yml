@@ -17,7 +17,7 @@ jobs:
           command: |
             cd api 
             stack setup
-            stack build --dependencies-only
+            stack build --test --dependencies-only
       - run:
           name: Resolve/Update Frontend Dependencies
           command: |
