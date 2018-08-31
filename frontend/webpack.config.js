@@ -13,6 +13,7 @@ module.exports = {
     proxy: {
       '/blogapi': {
         target: "http://localhost:8008",
+        headers: { "X-real-ip": "0.0.0.0" },
         pathRewrite: {'^/blogapi' : ''}
       }
     }

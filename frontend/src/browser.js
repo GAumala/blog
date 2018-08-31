@@ -1,3 +1,5 @@
 
 const currentPath = window.location.pathname;
-export const postStringId = currentPath.substr(currentPath.lastIndexOf("/") + 1);
+const idStart = currentPath.lastIndexOf("/") + 1;
+const idEnd = currentPath.lastIndexOf(".");
+export const postStringId = currentPath.substring(idStart, idEnd);
