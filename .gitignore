@@ -1,0 +1,8 @@
+api/*.sqlite
+frontend/node_modules
+static/.stack-work/
+static/_cache/
+static/_site/
+static/js/*.js
+frontend/output/js/*.js
+*~

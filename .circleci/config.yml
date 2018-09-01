@@ -1,0 +1,62 @@
+version: 2
+jobs:
+  build:
+    branches:
+      ignore:
+        - server
+    docker:
+      - image: gaumala/blog-arch:0.4
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Cached Dependencies
+          keys:
+            # Always cache everything
+            - deps-
+      - run:
+          name: Resolve/Update API Server Dependencies
+          working_directory: './api'
+          command: |
+            stack setup
+            stack build --test --dependencies-only
+      - run:
+          name: Resolve/Update Static Site Dependencies
+          working_directory: './static'
+          command: |
+            stack setup
+            # this is pretty big so disable optimizations and limit
+            # to one job to avoid running out of memory
+            stack build --dependencies-only -j1 --fast
+      - run:
+          name: Resolve/Update Frontend Dependencies
+          working_directory: './frontend'
+          command: yarn
+      - save_cache:
+          name: Cache Dependencies
+          key: deps-
+          paths:
+            - ~/.stack
+            - ./api/.stack-work
+            - ./static/.stack-work
+            - ./frontend/node_modules
+      - run:
+          name: Build Frontend App
+          working_directory: './frontend'
+          command: bash deploy.sh
+      - run:
+          name: Build & Test API App
+          working_directory: './api'
+          command: |
+            stack build 
+            stack test
+      - run:
+          name: Build Static Site Generator
+          command: |
+            cd static
+            stack build 
+      - run:
+          name: Generate Pages
+          command: |
+            cd static
+            stack exec site build
+      
