@@ -1,6 +1,9 @@
 version: 2
 jobs:
   build:
+    branches:
+      ignore:
+        - server
     docker:
       - image: gaumala/blog-arch:0.4
     steps:
