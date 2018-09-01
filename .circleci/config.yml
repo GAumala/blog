@@ -61,7 +61,7 @@ jobs:
           name: Deploy 
           command: |
             if [ "${CIRCLE_BRANCH}" != "master" ]; then
-              echo "Only master branch can deploy"
+              echo "Only master branch can deploy. Bye!"
               exit 0
             fi
 
@@ -78,5 +78,7 @@ jobs:
               git add .
               git commit -m "deploy #$CIRCLE_BUILD_NUM"
               git push origin server
+            else
+              echo "No changes to deploy. Bye!"
             fi
       
