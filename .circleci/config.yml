@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: gaumala/blog-arch:0.2
+      - image: gaumala/blog-arch:0.4
     steps:
       - checkout
       - restore_cache:
