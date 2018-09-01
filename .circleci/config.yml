@@ -68,6 +68,6 @@ jobs:
             git config --global user.email job@circleci.com
             git config --global user.name CircleCI
             git add .
-            git commit -m "deploy $CIRCLE_JOB"
+            git commit -m "deploy #$CIRCLE_BUILD_NUM"
             git push origin server
       
