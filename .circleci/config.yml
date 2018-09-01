@@ -51,12 +51,23 @@ jobs:
             stack test
       - run:
           name: Build Static Site Generator
-          command: |
-            cd static
-            stack build 
+          working_directory: './static'
+          command: stack build 
       - run:
           name: Generate Pages
+          working_directory: './static'
+          command: stack exec site build
+      - run:
+          name: Deploy 
           command: |
-            cd static
-            stack exec site build
+            mv ./static/_site /tmp
+            git checkout server
+            rm -rf _site
+            mv /tmp/_site . 
+
+            git config --global user.email job@circleci.com
+            git config --global user.name CircleCI
+            git add .
+            git commit -m "deploy $CIRCLE_JOB"
+            git push origin server
       
