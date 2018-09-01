@@ -8,31 +8,29 @@ jobs:
       - restore_cache:
           name: Restore Cached Dependencies
           keys:
-            - deps-{{ checksum "api/stack.yaml" }}-{{ checksum "static/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
-            # when missing reuse the latest cache
+            # Always cache everything
             - deps-
       - run:
           name: Resolve/Update API Server Dependencies
+          working_directory: './api'
           command: |
-            cd api 
             stack setup
             stack build --test --dependencies-only
       - run:
           name: Resolve/Update Static Site Dependencies
+          working_directory: './static'
           command: |
-            cd static 
             stack setup
             # this is pretty big so disable optimizations and limit
             # to one job to avoid running out of memory
-            stack build --dependencies-only -j1 --ghc-options -O0 
+            stack build --dependencies-only -j1 --fast
       - run:
           name: Resolve/Update Frontend Dependencies
-          command: |
-            cd frontend 
-            yarn
+          working_directory: './frontend'
+          command: yarn
       - save_cache:
           name: Cache Dependencies
-          key: deps-{{ checksum "api/stack.yaml" }}--{{ checksum "static/stack.yaml" }}-{{ checksum "frontend/yarn.lock" }}
+          key: deps-
           paths:
             - ~/.stack
             - ./api/.stack-work
@@ -40,24 +38,19 @@ jobs:
             - ./frontend/node_modules
       - run:
           name: Build Frontend App
-          command: |
-            cd frontend
-            yarn build
+          working_directory: './frontend'
+          command: bash deploy.sh
       - run:
-          name: Build API App
+          name: Build & Test API App
+          working_directory: './api'
           command: |
-            cd api 
-            stack build --pedantic
-      - run:
-          name: Test API App
-          command: |
-            cd api
+            stack build 
             stack test
       - run:
           name: Build Static Site Generator
           command: |
             cd static
-            stack build --pedantic --ghc-options -fno-warn-type-defaults
+            stack build 
       - run:
           name: Generate Pages
           command: |
