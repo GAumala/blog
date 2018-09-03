@@ -1,0 +1,16 @@
+/* All styles for the HTML generated with markdown */
+p, li {
+  line-height: 1.75em;
+}
+
+pre {
+  overflow: scroll;
+}
+
+pre, code {
+  background-color: rgba(27,31,35,0.1);
+}
+
+pre code {
+  background-color: rgba(27,31,35,0.0);
+}
