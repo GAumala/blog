@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Is this finally working? Oh, hello world!</title>
+    <noscript id="fontfaces">
+      <link rel="stylesheet" href="../css/font-faces.css" />
+    </noscript>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img id="twitter" src="../images/twitter.svg" alt="Twitter"></a>
+        <a href="../" title="Home">
+          <img id="home" src="../images/home.svg" alt="Home"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img id="github" src="../images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Is this finally working? Oh, hello world!</h1>
+    <div class="date"><span>September  3, 2018</span></div>
+    <article>
+      <section>
+        <p>I’ve been wanting to have my own blog for a while now, and only recently I finally had the time to sit down and work on it. I think knowing how to write and communicate effectively is a very valuable skill, specially for somebody working in tech. I’m by no means a good writer, but here I am.</p>
+<!--more-->
+<p>There are many options on the internet for publishing whatever you want to write. Medium seems to be the most popular option these days, but personally I’d prefer to stay away from closed cyberspaces because I believe in <a href="https://www.youtube.com/watch?v=izQFMADw70w">the decentralized web</a> (That’s a YouTube link, I know, the irony). Also, I like working with servers. I already pay every month for a small VPS from Digital Ocean in which I have deployed a few self-hosted apps for my own private use. Managing a public website seemed like the next step, and fun challenge as well, so I went for it.</p>
+<p>Before writing any code, you should always list your design goals. I thought about my goals for a long time, and this is what I came up with:</p>
+<ol type="1">
+<li><strong>Accessibilty.</strong> Blog posts should render correctly and efficiently everywhere. I do most of my reading on my phone, so I expect everything to be perfectly readable on small screens. A lot of people have slow internet connections and/or low-end devices. I know, because I’ve been there. There’s no reason why a simple article should take more than few seconds to load. You should not need to enable JavaScript either. Static pages should not rely on JavaScript, it should only be used for little enhancements.</li>
+<li><strong>No Tracking.</strong> I value my own privacy and respect people’s desire to not be tracked on the internet. I don’t need money from advertisers so I have no use for third party trackers that slow down my site. I think it is cool to have statistics about site usage, but such data should be gathered in a way that is anonymous, inobtrusive, and only if the user explicitly agreed to participate.</li>
+<li><strong>Mantainable.</strong> I will be mantaining this on my own free time, which is <em>very</em> limited, so things should be as simple as possible. Everything should be automated, unless the task at hand is too ambiguous or dangerous for a machine to do it. I shouldn’t have to reinvent the wheel unless I’m having fun. Publishing new posts or updating old ones should be as simple as editing some markdown files and hitting <code>git push</code>.</li>
+</ol>
+<p>Living up to these goals was not a simple task at all. It involved using lots of different technologies. My original plan was to document the whole process in this post, but it ended up being way too big for a single post. So here’s what I’m gonna do: I will publish a series of articles in which I focus on a specific technology that I used to build this blog. The series will consist of the following 5 parts:</p>
+<ol type="1">
+<li>Generating a static site with Hakyll</li>
+<li>Creating an HTTP API with Scotty</li>
+<li>Creating a like button widget with Mithril and webpack</li>
+<li>Using Nginx as a reverse proxy and static content server</li>
+<li>Continuous Integration with CircleCI</li>
+</ol>
+<p>I’ll update this list with the appropriate links after publishing every article. I had a blast building this site, and I hope you enjoy using it. In the mean time, stay tuned!</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>

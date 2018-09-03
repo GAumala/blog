@@ -18,6 +18,7 @@ import Web.Scotty.Helpers (
   APIError,
   getIpAddress, 
   getUserAgent,
+  truncateUserInput,
   whenValid) 
 import Web.DBActions (incrementLikesCount, getLikesCount)
 
@@ -25,8 +26,9 @@ getNewLikeInfoFromRequest :: ActionM (Either APIError LikeInfo)
 getNewLikeInfoFromRequest = do
   ipAddress <- getIpAddress
   userAgent <- getUserAgent
-  postStringId <- param "stringId"
+  rawPostStringId <- param "stringId"
   let readerInfo = ReaderInfo <$> ipAddress <*> userAgent
+      postStringId = truncateUserInput rawPostStringId
   return $ LikeInfo postStringId <$> readerInfo
 
 respondWithLikesCount :: Int -> ActionM ()
