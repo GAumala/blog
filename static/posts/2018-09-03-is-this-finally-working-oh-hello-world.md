@@ -32,7 +32,7 @@ about my goals for a long time, and this is what I came up with:
    be tracked on the internet. I don't need money from advertisers so I have no 
    use for third party trackers that slow down my site. I think it is cool to 
    have statistics about site usage, but such data should be gathered in a way
-   that is anonymous, inobtrusive, and only if the user explicitly agreed to
+   that is anonymous, unobtrusive, and only if the user explicitly agreed to
    participate.
 3. **Mantainable.** I will be mantaining this on my own free time, which is 
    *very* limited, so things should be as simple as possible. Everything should
