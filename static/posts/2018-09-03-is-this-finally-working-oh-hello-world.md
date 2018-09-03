@@ -55,5 +55,6 @@ following 5 parts:
 5. Continuous Integration with CircleCI
 
 I'll update this list with the appropriate links after publishing every article.
-I had a blast building this site, and I hope you enjoy using it. In the mean
-time, stay tuned!
+All of my code is open source and you can find it [on GitHub](
+https://github.com/GAumala/blog) I had a blast building this site, and I hope 
+you find it useful it. In the mean time, stay tuned!
