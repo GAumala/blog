@@ -16,7 +16,7 @@ decentralized web](https://www.youtube.com/watch?v=izQFMADw70w) (That's a
 YouTube link, I know, the irony). Also, I like working with servers. I already
 pay every month for a small VPS from Digital Ocean in which I have deployed 
 a few self-hosted apps for my own private use. Managing a public website seemed 
-like the next step, and fun challenge as well, so I went for it. 
+like the next step, and a fun challenge as well, so I went for it. 
 
 Before writing any code, you should always list your design goals. I thought
 about my goals for a long time, and this is what I came up with:
