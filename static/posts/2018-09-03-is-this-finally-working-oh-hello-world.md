@@ -1,5 +1,7 @@
 ---
 title: Is this finally working? Oh, hello world!
+description: "Hello World!"
+keywords: HTML,Web,programming,CSS,JavaScript,blog,site
 ---
 
 I've been wanting to have my own blog for a while now, and only recently I
