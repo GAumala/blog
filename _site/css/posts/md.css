@@ -1,1 +1,1 @@
-p,li{line-height:1.75em}pre{overflow:scroll}pre,code{background-color:rgba(27,31,35,0.1)}pre code{background-color:rgba(27,31,35,0.0)}
+p,li{line-height:1.75em}code{background-color:rgba(27,31,35,0.1)}pre{padding:16px;background-color:#000000;color:#FFFFFF;border-radius:8px;overflow:auto}pre code{background-color:rgba(0,0,0,0.0)}

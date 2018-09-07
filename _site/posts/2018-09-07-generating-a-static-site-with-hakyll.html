@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Haskell,Hakyll,CSS,fonts,JavaScript,blog,site">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Static sites with Haskell using the Hakyll library">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Building a Blog Part 1: Generating a static site with Hakyll">
+    <meta property="og:description" content="Static sites with Haskell using the Hakyll library">
+    <title>Building a Blog Part 1: Generating a static site with Hakyll</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img id="twitter" src="../images/twitter.svg" alt="Twitter"></a>
+        <a href="../" title="Home">
+          <img id="home" src="../images/home.svg" alt="Home"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img id="github" src="../images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Building a Blog Part 1: Generating a static site with Hakyll</h1>
+    <div class="date"><span>September  7, 2018</span></div>
+    <article>
+      <section>
+        <p>In part 1 of <a href="./2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about how the static pages served in this blog are generated. Writing HTML for every posts is too low level and cumbersome. I don’t need to rewrite the structure of the page for every post. It’s better to write the content in a more high level language like markdown and convert it to HTML using a predefined template. Programs that are able to do this are usually called static site generators AKA just what I need.</p>
+<!--more-->
+<p>A static site generator is not a trivial piece of software, there are many things that you have to take in account in order to maximize user experience. Despite this, there are plenty of options like Gatsby, Hugo, Jekyll and many more. I decided to go with <a href="https://jaspervdj.be/hakyll/">Hakyll</a> because I really like Haskell and it looked good enough for my use case. If you are not that into Haskell, you should probably look elsewhere. There’s still some room for improvement, but I enjoyed using it and am thankful for its existence.</p>
+<h2 id="getting-started">Getting started</h2>
+<p>Installing Hakyll and building a new site is as simple as following <a href="https://jaspervdj.be/hakyll/tutorials/01-installation.html">a tutorial in the official site</a>. The only inconvenience is that it took 30 minutes for stack to download and build the <code>hakyll-init</code> executable, and halfway there all of my 4 CPUs were close to 100% usage.</p>
+<p>After running <code>hakyll-init</code> a scaffolded site is generated with pretty much everything you need for a typical blog. Rules for processing the different files in the project are declared with Haskell in the <code>site.hs</code> file. For example this is how every single CSS file under <code>css/</code> is compressed:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">main <span class="fu">=</span> hakyll <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  <span class="co">-- More rules...</span></a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">    match ( <span class="st">&quot;css/*&quot;</span> <span class="fu">.||.</span> <span class="st">&quot;css/**/*&quot;</span>) <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5">        route   idRoute</a>
+<a class="sourceLine" id="cb1-6" data-line-number="6">        compile compressCssCompiler</a></code></pre></div>
+<p>The <code>route</code> function sets the route where the final file will be available on the server. <code>route idRoute</code> simply means to use the same path that the original file has in the file system. Functions that process files are named with the “Compiler” prefix and they are applied to the matched files with the <code>compile</code> function. Images, fonts and JavaScript files don’t need any processing so they can be directly copied with <code>copyFileCompiler</code>.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">main <span class="fu">=</span> hakyll <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="co">-- More rules...</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">    match (<span class="st">&quot;images/*&quot;</span> <span class="fu">.||.</span> <span class="st">&quot;fonts/*&quot;</span> <span class="fu">.||.</span> <span class="st">&quot;js/*&quot;</span>) <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">        route   idRoute</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">        compile copyFileCompiler</a></code></pre></div>
+<p>The most important compiler is <code>pandocCompiler</code>. It is the one that transforms the posts written in Markdown into valid HTML.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">main <span class="fu">=</span> hakyll <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">  <span class="co">-- More rules...</span></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4">    match <span class="st">&quot;posts/*&quot;</span> <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5">        route <span class="fu">$</span> setExtension <span class="st">&quot;html&quot;</span></a>
+<a class="sourceLine" id="cb3-6" data-line-number="6">        compile <span class="fu">$</span> pandocCompiler</a>
+<a class="sourceLine" id="cb3-7" data-line-number="7">            <span class="fu">&gt;&gt;=</span> loadAndApplyTemplate </a>
+<a class="sourceLine" id="cb3-8" data-line-number="8">                  <span class="st">&quot;templates/post.html&quot;</span> postCtx</a>
+<a class="sourceLine" id="cb3-9" data-line-number="9">            <span class="fu">&gt;&gt;=</span> relativizeUrls</a></code></pre></div>
+<p>As you can see, the DSL is very elegant. Hakyll’s official site has <a href="https://jaspervdj.be/hakyll/tutorials/03-rules-routes-compilers.html">a great tutorial for learning the basics of it</a>. Documentation is pretty good, there are a few other articles with useful information like <a href="https://jaspervdj.be/hakyll/tutorials/using-teasers-in-hakyll.html">how to display excerpts of posts on the index page</a>.</p>
+<h2 id="syntax-highlighting-on-code-snippets">Syntax highlighting on code snippets</h2>
+<p>This blog is going to be mostly about programming so code snippets like the one above need syntax highlighting for better readability. The Pandoc compiler gets you halfway there, all you need to do is set the appropriate colors with CSS. I just copied the <a href="https://github.com/jaspervdj/hakyll/blob/master/web/css/syntax.css">default Pandoc syntax CSS file</a> and changed the colors to somewhat resemble the <a href="https://github.com/chriskempson/tomorrow-theme">Tomorrow Theme</a>.</p>
+<h2 id="managing-css-files">Managing CSS files</h2>
+<p>I don’t use a lot of CSS as require a CSS preprocessor like SASS, but I do like to keep my CSS files small and focused on a single thing. For example, the CSS used for this article consists of four files:</p>
+<ul>
+<li><code>main.css</code> has most of the CSS used for the pages layout.</li>
+<li><code>md.css</code> has CSS styles for elements rendered from markdown source.</li>
+<li><code>syntax.css</code> has the colors used for syntax highlighting in code snippets.</li>
+<li><code>like.css</code> has the styles for the like button at the bottom (I’ll talk more about that later).</li>
+</ul>
+<p>I like to use different files for development, but serving a single stylesheet has better performance because it reduces the number of HTTP requests that the browser needs to send to the server in order to render the page, so I needed some way of merging all these little files. The solution for this is to concatenate them with a Hakyll rule. To achieve that I use this simple template named <code>concat.txt</code>:</p>
+<pre><code> $for(items)$$body$$endfor$</code></pre>
+<p>This template just looks in its context for a list value named “items” and concatenates all of the list items into a single text file. It even retains the CSS minifactions done by the <code>compressCSSCompiler</code>. All there is left to do is to load all the necessary CSS files and apply the template like this:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">main <span class="fu">=</span> hakyll <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">    <span class="co">-- More rules...</span></a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">    create [<span class="st">&quot;css/post-bundle.css&quot;</span>] <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb5-5" data-line-number="5">      route idRoute</a>
+<a class="sourceLine" id="cb5-6" data-line-number="6">      compile <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb5-7" data-line-number="7">        cssFiles <span class="ot">&lt;-</span> loadAll <span class="st">&quot;css/posts/*&quot;</span> </a>
+<a class="sourceLine" id="cb5-8" data-line-number="8">        <span class="kw">let</span> styleCtx <span class="fu">=</span> listField <span class="st">&quot;items&quot;</span> </a>
+<a class="sourceLine" id="cb5-9" data-line-number="9">                                 defaultContext </a>
+<a class="sourceLine" id="cb5-10" data-line-number="10">                                 (return cssFiles)</a>
+<a class="sourceLine" id="cb5-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb5-12" data-line-number="12">        makeItem <span class="st">&quot;&quot;</span></a>
+<a class="sourceLine" id="cb5-13" data-line-number="13">            <span class="fu">&gt;&gt;=</span> loadAndApplyTemplate </a>
+<a class="sourceLine" id="cb5-14" data-line-number="14">                  <span class="st">&quot;templates/concat.txt&quot;</span> styleCtx</a></code></pre></div>
+<p>All the files that I listed above exist on my project, but <code>css/post-bundle.css</code> does not. To make Hakyll create new files I have to use <code>create</code> instead of <code>match</code>. Then I can load all the stylesheets inside <code>css/posts/</code> and apply the <code>concat.txt</code> template to create the actual stylesheet that will be served.</p>
+<h2 id="lazy-loading-fonts">Lazy loading fonts</h2>
+<p>It’s very easy to find pretty fonts on the internet and just dump them into your site. There is just one <em>little</em> problem: These files can be far bigger than your HTML or CSS, slowing down your load times. For example all the fonts used by this site have a combined size of 1.1 MB, whereas the average post’s HTML and CSS has a combined size of roughly 10 KB. The fonts are 100 times bigger than the actual page. That’s insane.</p>
+<p>How can I fix this? Well I don’t know, I’m not an expert about the browser’s internals that render text loading the necessary fonts. So what I did was I read <a href="https://meowni.ca/posts/web-fonts/">Monica Dinculescu’s post about web fonts</a>. She explains how the browser waits for the necessary fonts to load before showing you the text and suggests to first render text with fallback fonts until the actual fonts load asynchronously to prevent users from staring at blank screens for too long.</p>
+<p>After clearing that up the first step was to declare the font faces in a single CSS file that will be loaded asynchronously. So I created the file <code>css/font-faces.css</code> with this content:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode css"><code class="sourceCode css"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="im">@font-face</span> {</a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">  <span class="kw">font-family</span>: Merriweather;</a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">  <span class="kw">src</span>: <span class="fu">url</span>(<span class="st">&quot;../fonts/Merriweather-Light.ttf&quot;</span>);</a>
+<a class="sourceLine" id="cb6-4" data-line-number="4">  <span class="kw">font-weight</span>: <span class="dv">400</span>;</a>
+<a class="sourceLine" id="cb6-5" data-line-number="5">}</a>
+<a class="sourceLine" id="cb6-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb6-7" data-line-number="7"><span class="im">@font-face</span> {</a>
+<a class="sourceLine" id="cb6-8" data-line-number="8">  <span class="kw">font-family</span>: OpenSans;</a>
+<a class="sourceLine" id="cb6-9" data-line-number="9">  <span class="kw">src</span>: <span class="fu">url</span>(<span class="st">&quot;../fonts/OpenSans-Regular.ttf&quot;</span>);</a>
+<a class="sourceLine" id="cb6-10" data-line-number="10">  <span class="kw">font-weight</span>: <span class="dv">normal</span>;</a>
+<a class="sourceLine" id="cb6-11" data-line-number="11">}</a>
+<a class="sourceLine" id="cb6-12" data-line-number="12"></a>
+<a class="sourceLine" id="cb6-13" data-line-number="13"><span class="im">@font-face</span> {</a>
+<a class="sourceLine" id="cb6-14" data-line-number="14">  <span class="kw">font-family</span>: OpenSans;</a>
+<a class="sourceLine" id="cb6-15" data-line-number="15">  <span class="kw">src</span>: <span class="fu">url</span>(<span class="st">&quot;../fonts/OpenSans-Bold.ttf&quot;</span>);</a>
+<a class="sourceLine" id="cb6-16" data-line-number="16">  <span class="kw">font-weight</span>: <span class="dv">bold</span>;</a>
+<a class="sourceLine" id="cb6-17" data-line-number="17">}</a></code></pre></div>
+<p>Then I use XHR to load that stylesheet asynchronously so that it gets cached by the browser and only then add the <code>link</code> tag to the document’s head. This is the JavaScript that I use:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode javascript"><code class="sourceCode javascript"><a class="sourceLine" id="cb7-1" data-line-number="1">  <span class="kw">const</span> fontfacesPath <span class="op">=</span> <span class="st">&quot;/css/font-faces.css&quot;</span></a>
+<a class="sourceLine" id="cb7-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">  <span class="kw">const</span> setFontfacesStylesheet <span class="op">=</span> () <span class="op">=&gt;</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">    <span class="kw">const</span> newLink <span class="op">=</span> <span class="va">document</span>.<span class="at">createElement</span>(<span class="st">&quot;link&quot;</span>)<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-5" data-line-number="5">    <span class="va">newLink</span>.<span class="at">rel</span> <span class="op">=</span> <span class="st">&quot;stylesheet&quot;</span><span class="op">;</span></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6">    <span class="va">newLink</span>.<span class="at">href</span> <span class="op">=</span> fontfacesPath<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb7-8" data-line-number="8">    <span class="va">document</span>.<span class="va">head</span>.<span class="at">appendChild</span>(newLink)<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-9" data-line-number="9">  <span class="op">}</span></a>
+<a class="sourceLine" id="cb7-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb7-11" data-line-number="11">  <span class="im">export</span> <span class="kw">const</span> linkFontFaces <span class="op">=</span> () <span class="op">=&gt;</span> <span class="op">{</span></a>
+<a class="sourceLine" id="cb7-12" data-line-number="12">    <span class="kw">const</span> xhr <span class="op">=</span> <span class="kw">new</span> <span class="at">XMLHttpRequest</span>()<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">    <span class="va">xhr</span>.<span class="at">open</span>(<span class="st">'GET'</span><span class="op">,</span> fontfacesPath<span class="op">,</span> <span class="kw">true</span>)<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">    <span class="va">xhr</span>.<span class="at">onreadystatechange</span> <span class="op">=</span> <span class="kw">function</span> () <span class="op">{</span></a>
+<a class="sourceLine" id="cb7-15" data-line-number="15">      <span class="cf">if</span> (<span class="va">xhr</span>.<span class="at">readyState</span> <span class="op">==</span> <span class="dv">4</span> <span class="op">&amp;&amp;</span> <span class="va">xhr</span>.<span class="at">status</span> <span class="op">==</span> <span class="dv">200</span>) <span class="op">{</span></a>
+<a class="sourceLine" id="cb7-16" data-line-number="16">        <span class="at">setFontfacesStylesheet</span>()<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-17" data-line-number="17">      <span class="op">}</span></a>
+<a class="sourceLine" id="cb7-18" data-line-number="18">    <span class="op">};</span></a>
+<a class="sourceLine" id="cb7-19" data-line-number="19">    <span class="va">xhr</span>.<span class="at">send</span>()<span class="op">;</span></a>
+<a class="sourceLine" id="cb7-20" data-line-number="20">  <span class="op">}</span></a></code></pre></div>
+<p>With this approach the browser renders the text ASAP with system fonts and only applies the custom fonts on a second render once they are loaded so that the user doesn’t have to wait for fonts to load before reading an article. This is great for people with slow internet connections. Yay! However this isn’t flawless. There are two slight inconveniences:</p>
+<ul>
+<li>If you are privileged enough to have a fast internet connection you will notice how the browser quickly changes between fonts after the page loads. It’s not pretty, but hey, it’s not a bug, it’s a feature!</li>
+<li>If you disable JavaScript in your browser (and you probably should), will only read articles using system fonts, but on the bright side you probably don’t care about it and are happy with all your pages loading super fast.</li>
+</ul>
+<p>After lazy loading fonts, the static pages are ready to be served. The only thing that I have not mentioned yet is the “like” button at the bottom of this page. It is implemented with JavaScript using <a href="https://mithril.js.org/">Mithril</a>. Next part will be about a <a href="https://github.com/scotty-web/scotty">Scotty</a> web app that implements the endpoints that this button consumes and a later post will be about the widget’s implementation with Mithril and webpack.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>
