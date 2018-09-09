@@ -50,7 +50,8 @@ I'm gonna do: I will publish a series of articles in which I focus on a specific
 technology that I used to build this blog. The series will consist of the
 following 5 parts:
 
-1. Generating a static site with Hakyll
+1. [Generating a static site with Hakyll](
+    ./2018-09-07-generating-a-static-site-with-hakyll.html)
 2. Creating an HTTP API with Scotty
 3. Creating a like button widget with Mithril and webpack
 4. Using Nginx as a reverse proxy and static content server
