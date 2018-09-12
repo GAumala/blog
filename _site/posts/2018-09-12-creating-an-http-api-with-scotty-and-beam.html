@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Haskell,Scotty,Beam,Web,Application,HTTP,API">
+    <meta name="description" content="Web applications in Haskell with Scotty and Beam" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Web applications in Haskell with Scotty and Beam">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Building a Blog Part 2: Creating an HTTP API with Scotty and Beam">
+    <meta property="og:description" content="Web applications in Haskell with Scotty and Beam">
+    <title>Building a Blog Part 2: Creating an HTTP API with Scotty and Beam</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img id="twitter" src="../images/twitter.svg" alt="Twitter"></a>
+        <a href="../" title="Home">
+          <img id="home" src="../images/home.svg" alt="Home"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img id="github" src="../images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Building a Blog Part 2: Creating an HTTP API with Scotty and Beam</h1>
+    <div class="date"><span>September 12, 2018</span></div>
+    <article>
+      <section>
+        <p>In part 2 of <a href="./2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about how the small HTTP API used by this blog was implemented. Once again, because I like Haskell, I’ll use the <a href="https://github.com/scotty-web/scotty">Scotty</a> web framework to listen to HTTP requests and run SQLite queries with the <a href="http://tathougies.github.io/beam/">Beam</a> library.</p>
+<!--more-->
+<p>You don’t really need to write a backend for a blog, but I wanted to do it just for fun. Haskell has a <a href="http://www.aosabook.org/en/posa/warp.html">great runtime for web apps</a> so I thought it would be cool to try it out in a “real world” application. Besides, I wanted a way to collect data about the site’s usage without using third party JavaScript. Previously I talked about how privacy matters and that this sort of thing should be opt-in. To gather this data I decided to add a like button, which users can voluntarily click to send some anonymous data to my server so that I can count how many people liked my posts. To achieve this, I need some endpoints that can update and read the likes counter with POST and GET methods respectively. The Scotty framework is simple enough to let us do this with just a few lines of code.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="ot">{-# LANGUAGE OverloadedStrings #-}</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb1-3" data-line-number="3"><span class="kw">module</span> <span class="dt">Main</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb1-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5"><span class="kw">import</span> <span class="dt">Web.Scotty</span> (get, post, scotty)</a>
+<a class="sourceLine" id="cb1-6" data-line-number="6"><span class="kw">import</span> <span class="dt">Web.Actions</span> (getLikes, postLike)</a>
+<a class="sourceLine" id="cb1-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb1-8" data-line-number="8"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
+<a class="sourceLine" id="cb1-9" data-line-number="9">main <span class="fu">=</span> scotty <span class="dv">8008</span> <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb1-10" data-line-number="10">  get <span class="st">&quot;/likes/:postId&quot;</span> getLikes</a>
+<a class="sourceLine" id="cb1-11" data-line-number="11">  post <span class="st">&quot;/likes/:postId&quot;</span> postLike</a></code></pre></div>
+<p>This web app listens for HTTP requests on port 8008 and exposes two endpoints <code>GET /likes</code> and <code>POST /like</code> that are handled by the functions <code>getLikes</code> and <code>postLike</code> respectively. They both take the post’s ID as a URL parameter. The basic idea is that when a <code>POST /like</code> request is received, the likes counter for that post is incremented by one unit in the database. On the other hand, when a <code>GET /likes</code> request is received the number of likes for that post is queried in the database. This sounds fairly easy right? SQLite is my favorite database, and I’m pretty sure that <a href="https://www.sqlite.org/whentouse.html">it is good enough for this kind of website</a>, so I just went with that. All that was missing was a way to talk to the database from Haskell.</p>
+<h3 id="managing-sqlite-with-beam">Managing SQLite with Beam</h3>
+<p>I’ve always disliked ORMs and any other attempts to abstract SQL from application code. Yes, I understand that SQL injection is a thing, but I like SQL and although it is a standard every database that implements it is different. <a href="https://blog.acolyer.org/2018/06/28/how-_not_-to-structure-your-database-backed-web-applications-a-study-of-performance-bugs-in-the-wild/">ORMs can be very problematic</a>. You might end up with a simple system if you just embrace SQL, even if it doesn’t fit with the way your programming language does things.</p>
+<p>I know that it’s probably not the most rational thing to do given my stance on database abstractions but I decided to give <a href="http://tathougies.github.io/beam/">Beam</a> a try. The reason is that I don’t claim to be right about absolutely everything and I was very curious about what would be the “Haskell way” of working with databases. One cool thing about Beam, and other similar Haskell libraries, is that makes the user responsible for opening and managing the database instead of magically doing it for you under the hood. This is actually good because it means that I can always fallback to sending raw queries with <a href="https://hackage.haskell.org/package/sqlite-simple"><code>sqlite-simple</code></a> if I don’t like the queries generated by Beam, so there is nothing to worry about.</p>
+<p>Learning Beam wasn’t easy for me. It uses lots of language extensions, and needs a lot of boilerplate that I can’t really understand. Nevertheless, I am happy with the result. I tried reading a few tutorials, but I always ended up reading the official docs because the things that I needed to do weren’t as simple as the ones that tutorials usually do, plus Beam’s documentation site is pretty neat.</p>
+<p>The first thing that I had to do was to create the database schema. I wanted to be in full control of it so I generated it with SQL instead of letting Beam do it. I ended up with this:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql"><code class="sourceCode sql"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">create</span> <span class="kw">table</span> posts(</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">  <span class="kw">id</span> <span class="dt">integer</span> <span class="kw">primary</span> <span class="kw">key</span>, </a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">  string_id text</a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">);</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"><span class="kw">create</span> <span class="kw">table</span> readers(</a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">  <span class="kw">id</span> <span class="dt">integer</span> <span class="kw">primary</span> <span class="kw">key</span>, </a>
+<a class="sourceLine" id="cb2-8" data-line-number="8">  ip_address text,</a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">  user_agent text </a>
+<a class="sourceLine" id="cb2-10" data-line-number="10">);</a>
+<a class="sourceLine" id="cb2-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12"><span class="kw">create</span> <span class="kw">table</span> likes(</a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">  <span class="kw">id</span> <span class="dt">integer</span> <span class="kw">primary</span> <span class="kw">key</span>, </a>
+<a class="sourceLine" id="cb2-14" data-line-number="14">  reader_key__id <span class="dt">integer</span>, </a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">  post_key__id <span class="dt">integer</span>,</a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">  <span class="kw">foreign</span> <span class="kw">key</span>(reader_key__id) </a>
+<a class="sourceLine" id="cb2-17" data-line-number="17">    <span class="kw">references</span> readers(<span class="kw">id</span>) </a>
+<a class="sourceLine" id="cb2-18" data-line-number="18">    <span class="kw">on</span> <span class="kw">delete</span> <span class="kw">cascade</span>,</a>
+<a class="sourceLine" id="cb2-19" data-line-number="19">  <span class="kw">foreign</span> <span class="kw">key</span>(post_key__id) </a>
+<a class="sourceLine" id="cb2-20" data-line-number="20">    <span class="kw">references</span> posts(<span class="kw">id</span>) </a>
+<a class="sourceLine" id="cb2-21" data-line-number="21">    <span class="kw">on</span> <span class="kw">delete</span> <span class="kw">cascade</span></a>
+<a class="sourceLine" id="cb2-22" data-line-number="22">);</a></code></pre></div>
+<p>I only have three tables. The first one is for posts, excluiding the primary key it only has one field: the id of the post, which is just a string with the last segment in it’s path.</p>
+<p>The second table is for readers, it stores IP adresses and user agent strings. The reader table also has an index that ensure that each <code>ip_address</code> and <code>user_agent</code> pair must be unique, which means that for this system a reader is a unique combination of ip address and user agent. This is totally not real, but it is a good approximation for me.</p>
+<p>The third table, “likes”, is just a relation between many readers and many posts. I let users like the same post as many times as they want because the <code>ip_address</code> and <code>user_agent</code> combination of the “readers” table is not unique at all. A like is merely a combination of a user and a post, somebody liked something. The “readers” table’s only purpose is to provide a little more data about the person who liked the post.</p>
+<p>Then I needed to implement this exact same schema with Beam. This has a lot of boilerplate, and I’m definetely not the best to explain it, but you can see it here:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="ot">{-# LANGUAGE FlexibleInstances #-}</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="ot">{-# LANGUAGE TypeFamilies #-}</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3"><span class="ot">{-# LANGUAGE StandaloneDeriving #-}</span></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4"><span class="ot">{-# LANGUAGE DeriveGeneric #-}</span></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5"><span class="ot">{-# LANGUAGE MultiParamTypeClasses #-}</span></a>
+<a class="sourceLine" id="cb3-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb3-7" data-line-number="7"><span class="kw">module</span> <span class="dt">Database.Schema</span> (</a>
+<a class="sourceLine" id="cb3-8" data-line-number="8">  <span class="dt">BlogDB</span>(_blogLikes, _blogPosts, _blogReaders),</a>
+<a class="sourceLine" id="cb3-9" data-line-number="9">  <span class="dt">Like</span>,</a>
+<a class="sourceLine" id="cb3-10" data-line-number="10">  <span class="dt">LikeT</span>(<span class="dt">Like</span>, _likeReaderKey, _likePostKey),</a>
+<a class="sourceLine" id="cb3-11" data-line-number="11">  <span class="dt">Post</span>,</a>
+<a class="sourceLine" id="cb3-12" data-line-number="12">  <span class="dt">PostT</span>(<span class="dt">Post</span>, _postStringId),</a>
+<a class="sourceLine" id="cb3-13" data-line-number="13">  <span class="dt">Reader</span>,</a>
+<a class="sourceLine" id="cb3-14" data-line-number="14">  <span class="dt">ReaderT</span>(<span class="dt">Reader</span>, _readerId, _readerIpAddress, </a>
+<a class="sourceLine" id="cb3-15" data-line-number="15">          _readerUserAgent),</a>
+<a class="sourceLine" id="cb3-16" data-line-number="16">  blogDb) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb3-18" data-line-number="18"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text.Lazy</span> <span class="kw">as</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb3-19" data-line-number="19"><span class="kw">import</span> <span class="dt">Database.Beam</span></a>
+<a class="sourceLine" id="cb3-20" data-line-number="20"></a>
+<a class="sourceLine" id="cb3-21" data-line-number="21"><span class="co">-- specify types for the tables</span></a>
+<a class="sourceLine" id="cb3-22" data-line-number="22"><span class="kw">data</span> <span class="dt">PostT</span> f <span class="fu">=</span> <span class="dt">Post</span></a>
+<a class="sourceLine" id="cb3-23" data-line-number="23">  {<span class="ot"> _postId ::</span> <span class="dt">Columnar</span> f <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-24" data-line-number="24">  ,<span class="ot"> _postStringId ::</span> <span class="dt">Columnar</span> f <span class="dt">Text.Text</span></a>
+<a class="sourceLine" id="cb3-25" data-line-number="25">  } <span class="kw">deriving</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb3-26" data-line-number="26"></a>
+<a class="sourceLine" id="cb3-27" data-line-number="27"><span class="kw">data</span> <span class="dt">ReaderT</span> f <span class="fu">=</span> <span class="dt">Reader</span></a>
+<a class="sourceLine" id="cb3-28" data-line-number="28">  {<span class="ot"> _readerId ::</span> <span class="dt">Columnar</span> f <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-29" data-line-number="29">  ,<span class="ot"> _readerIpAddress ::</span> <span class="dt">Columnar</span> f <span class="dt">Text.Text</span></a>
+<a class="sourceLine" id="cb3-30" data-line-number="30">  ,<span class="ot"> _readerUserAgent ::</span> <span class="dt">Columnar</span> f <span class="dt">Text.Text</span></a>
+<a class="sourceLine" id="cb3-31" data-line-number="31">  } <span class="kw">deriving</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb3-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb3-33" data-line-number="33"><span class="kw">data</span> <span class="dt">LikeT</span> f <span class="fu">=</span> <span class="dt">Like</span></a>
+<a class="sourceLine" id="cb3-34" data-line-number="34">  {<span class="ot"> _likeId ::</span> <span class="dt">Columnar</span> f <span class="dt">Int</span></a>
+<a class="sourceLine" id="cb3-35" data-line-number="35">  ,<span class="ot"> _likeReaderKey ::</span> <span class="dt">PrimaryKey</span> <span class="dt">ReaderT</span> f</a>
+<a class="sourceLine" id="cb3-36" data-line-number="36">  ,<span class="ot"> _likePostKey ::</span> <span class="dt">PrimaryKey</span> <span class="dt">PostT</span> f</a>
+<a class="sourceLine" id="cb3-37" data-line-number="37">  } <span class="kw">deriving</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb3-38" data-line-number="38"></a>
+<a class="sourceLine" id="cb3-39" data-line-number="39"><span class="co">-- table types that I can actually use</span></a>
+<a class="sourceLine" id="cb3-40" data-line-number="40"><span class="kw">type</span> <span class="dt">Post</span> <span class="fu">=</span> <span class="dt">PostT</span> <span class="dt">Identity</span></a>
+<a class="sourceLine" id="cb3-41" data-line-number="41"><span class="kw">type</span> <span class="dt">Reader</span> <span class="fu">=</span> <span class="dt">ReaderT</span> <span class="dt">Identity</span></a>
+<a class="sourceLine" id="cb3-42" data-line-number="42"><span class="kw">type</span> <span class="dt">Like</span> <span class="fu">=</span> <span class="dt">LikeT</span> <span class="dt">Identity</span></a>
+<a class="sourceLine" id="cb3-43" data-line-number="43"></a>
+<a class="sourceLine" id="cb3-44" data-line-number="44"></a>
+<a class="sourceLine" id="cb3-45" data-line-number="45"><span class="co">-- derive instances </span></a>
+<a class="sourceLine" id="cb3-46" data-line-number="46"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> <span class="dt">Post</span></a>
+<a class="sourceLine" id="cb3-47" data-line-number="47"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> (<span class="dt">PrimaryKey</span> <span class="dt">PostT</span> <span class="dt">Identity</span>)</a>
+<a class="sourceLine" id="cb3-48" data-line-number="48"><span class="kw">instance</span> <span class="dt">Beamable</span> <span class="dt">PostT</span></a>
+<a class="sourceLine" id="cb3-49" data-line-number="49"><span class="kw">instance</span> <span class="dt">Beamable</span> (<span class="dt">PrimaryKey</span> <span class="dt">PostT</span>)</a>
+<a class="sourceLine" id="cb3-50" data-line-number="50"></a>
+<a class="sourceLine" id="cb3-51" data-line-number="51"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> <span class="dt">Reader</span></a>
+<a class="sourceLine" id="cb3-52" data-line-number="52"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> (<span class="dt">PrimaryKey</span> <span class="dt">ReaderT</span> <span class="dt">Identity</span>)</a>
+<a class="sourceLine" id="cb3-53" data-line-number="53"><span class="kw">instance</span> <span class="dt">Beamable</span> <span class="dt">ReaderT</span></a>
+<a class="sourceLine" id="cb3-54" data-line-number="54"><span class="kw">instance</span> <span class="dt">Beamable</span> (<span class="dt">PrimaryKey</span> <span class="dt">ReaderT</span>)</a>
+<a class="sourceLine" id="cb3-55" data-line-number="55"></a>
+<a class="sourceLine" id="cb3-56" data-line-number="56"><span class="kw">deriving</span> <span class="kw">instance</span> <span class="dt">Show</span> <span class="dt">Like</span></a>
+<a class="sourceLine" id="cb3-57" data-line-number="57"><span class="kw">instance</span> <span class="dt">Beamable</span> <span class="dt">LikeT</span></a>
+<a class="sourceLine" id="cb3-58" data-line-number="58"><span class="kw">instance</span> <span class="dt">Beamable</span> (<span class="dt">PrimaryKey</span> <span class="dt">LikeT</span>)</a>
+<a class="sourceLine" id="cb3-59" data-line-number="59"></a>
+<a class="sourceLine" id="cb3-60" data-line-number="60"><span class="kw">instance</span> <span class="dt">Table</span> <span class="dt">PostT</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-61" data-line-number="61">  <span class="kw">data</span> <span class="dt">PrimaryKey</span> <span class="dt">PostT</span> f <span class="fu">=</span> <span class="dt">PostId</span> (<span class="dt">Columnar</span> f <span class="dt">Int</span>) </a>
+<a class="sourceLine" id="cb3-62" data-line-number="62">                            <span class="kw">deriving</span> <span class="dt">Generic</span></a>
+<a class="sourceLine" id="cb3-63" data-line-number="63">  primaryKey <span class="fu">=</span> <span class="dt">PostId</span> <span class="fu">.</span> (<span class="ot">_postId ::</span> <span class="dt">PostT</span> f </a>
+<a class="sourceLine" id="cb3-64" data-line-number="64">                                 <span class="ot">-&gt;</span> <span class="dt">Columnar</span> f <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb3-65" data-line-number="65"></a>
+<a class="sourceLine" id="cb3-66" data-line-number="66"><span class="kw">instance</span> <span class="dt">Table</span> <span class="dt">ReaderT</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-67" data-line-number="67">  <span class="kw">data</span> <span class="dt">PrimaryKey</span> <span class="dt">ReaderT</span> f <span class="fu">=</span> <span class="dt">ReaderId</span> (<span class="dt">Columnar</span> f <span class="dt">Int</span>) </a>
+<a class="sourceLine" id="cb3-68" data-line-number="68">                              <span class="kw">deriving</span> <span class="dt">Generic</span></a>
+<a class="sourceLine" id="cb3-69" data-line-number="69">  primaryKey <span class="fu">=</span> <span class="dt">ReaderId</span> <span class="fu">.</span> (<span class="ot">_readerId ::</span> <span class="dt">ReaderT</span> f </a>
+<a class="sourceLine" id="cb3-70" data-line-number="70">                                     <span class="ot">-&gt;</span> <span class="dt">Columnar</span> f <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb3-71" data-line-number="71"></a>
+<a class="sourceLine" id="cb3-72" data-line-number="72"><span class="kw">instance</span> <span class="dt">Table</span> <span class="dt">LikeT</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb3-73" data-line-number="73">  <span class="kw">data</span> <span class="dt">PrimaryKey</span> <span class="dt">LikeT</span> f <span class="fu">=</span> <span class="dt">LikeId</span> (<span class="dt">Columnar</span> f <span class="dt">Int</span>) </a>
+<a class="sourceLine" id="cb3-74" data-line-number="74">                            <span class="kw">deriving</span> <span class="dt">Generic</span></a>
+<a class="sourceLine" id="cb3-75" data-line-number="75">  primaryKey <span class="fu">=</span> <span class="dt">LikeId</span> <span class="fu">.</span> (<span class="ot">_likeId ::</span> <span class="dt">LikeT</span> f </a>
+<a class="sourceLine" id="cb3-76" data-line-number="76">                                 <span class="ot">-&gt;</span> <span class="dt">Columnar</span> f <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb3-77" data-line-number="77"></a>
+<a class="sourceLine" id="cb3-78" data-line-number="78"><span class="co">-- types for the database</span></a>
+<a class="sourceLine" id="cb3-79" data-line-number="79"><span class="kw">data</span> <span class="dt">BlogDB</span> f <span class="fu">=</span> <span class="dt">BlogDB</span></a>
+<a class="sourceLine" id="cb3-80" data-line-number="80">  {<span class="ot"> _blogPosts ::</span> f (<span class="dt">TableEntity</span> <span class="dt">PostT</span>)</a>
+<a class="sourceLine" id="cb3-81" data-line-number="81">  ,<span class="ot"> _blogReaders ::</span> f (<span class="dt">TableEntity</span> <span class="dt">ReaderT</span>)</a>
+<a class="sourceLine" id="cb3-82" data-line-number="82">  ,<span class="ot"> _blogLikes ::</span> f (<span class="dt">TableEntity</span> <span class="dt">LikeT</span>)</a>
+<a class="sourceLine" id="cb3-83" data-line-number="83">  } <span class="kw">deriving</span> (<span class="dt">Generic</span>)</a>
+<a class="sourceLine" id="cb3-84" data-line-number="84"></a>
+<a class="sourceLine" id="cb3-85" data-line-number="85"><span class="kw">instance</span> <span class="dt">Database</span> be <span class="dt">BlogDB</span></a>
+<a class="sourceLine" id="cb3-86" data-line-number="86"></a>
+<a class="sourceLine" id="cb3-87" data-line-number="87"><span class="ot">blogDb ::</span> <span class="dt">DatabaseSettings</span> be <span class="dt">BlogDB</span></a>
+<a class="sourceLine" id="cb3-88" data-line-number="88">blogDb <span class="fu">=</span> defaultDbSettings</a></code></pre></div>
+<p>The important thing here is that the names of the record fields for table types must be prefixed with an underscore followed by the table’s name, otherwise Beam won’t be able to work with the existing schema. For example the reader table has a <code>ip_address</code> column, so the equivalent record field is <code>_readerIpAddress</code>. Foreign keys in the likes table also need special names like <code>post_key__id</code>. Having to use underscores for column names may be a bit too opinionated, but I can live with it.</p>
+<h2 id="writing-queries-with-beam">Writing queries with Beam</h2>
+<p>Once the schema is ready I can start working on the queries. The first thing to do is to insert data into the database. Here’s a function that inserts a new post row:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">import</span> <span class="dt">Database.Beam</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="kw">import</span> <span class="dt">Database.Beam.Sqlite</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Database.Beam.Backend.SQL.BeamExtensions</span> <span class="kw">as</span> <span class="dt">BeamExt</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="kw">import</span> <span class="kw">qualified</span> <span class="dt">Data.Text.Lazy</span> <span class="kw">as</span> <span class="dt">Text</span></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6"><span class="ot">insertNewPost ::</span> <span class="dt">Text.Text</span> </a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">              <span class="ot">-&gt;</span> <span class="dt">SqliteM</span> (<span class="dt">PrimaryKey</span> <span class="dt">PostT</span> <span class="dt">Identity</span>)</a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">insertNewPost stringId <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">  [newPost] <span class="ot">&lt;-</span> BeamExt.runInsertReturningList (_blogPosts blogDb)</a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">                 <span class="fu">$</span> insertExpressions [ <span class="dt">Post</span> default_ (val_ stringId) ]</a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">return <span class="fu">$</span> pk newPost</a></code></pre></div>
+<p>The post table only holds the string ID of the post, so that’s the only argument for this function. Here, the expression <code>Post default_ (val_ stringId)</code> is inserted, which just means “A new post row with an autoincrement id, and the provided string ID”. This whole expression thing might be a little hard to understand, but it’s a really great way of storing rows with auto increment fields. In popular ORMs found in imperative languages, you usually have to set a <code>0</code> or <code>-1</code> to an auto increment field during insertion, and it feels like a hack when compared to Beam’s approach. Finally, <code>return $ pk newPost</code>, returns the new post’s primary key, which will be needed to insert a row to the likes table.</p>
+<p>After inserting a few posts, they can looked up with this function:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">findPostByStringId ::</span> <span class="dt">Text.Text</span> <span class="ot">-&gt;</span> <span class="dt">SqliteM</span> (<span class="dt">Maybe</span> <span class="dt">Post</span>)</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">findPostByStringId targetStringId <span class="fu">=</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">  runSelectReturningOne</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">    <span class="fu">$</span> select</a>
+<a class="sourceLine" id="cb5-5" data-line-number="5">    <span class="fu">$</span> filter_ (\row <span class="ot">-&gt;</span> _postStringId row <span class="fu">==.</span> val_ targetStringId)</a>
+<a class="sourceLine" id="cb5-6" data-line-number="6">    <span class="fu">$</span> all_ (_blogPosts blogDb)</a></code></pre></div>
+<p>This function takes a string ID as argument and returns a record with that exact same ID, or <code>Nothing</code> if there’s none. Here you can see how Beam’s DSL starts to shine. The three main functions are <code>select</code>, <code>filter_</code>, and <code>all_</code>. Together they basically tell SQLite “I want you to select all the rows from the posts table that satisfy this filter”. The function <code>runSelectReturningOne</code> wraps the result in a <code>Maybe</code> instead of the typical <code>List</code>, which is exactly what I need here because string IDs are meant to be unique.</p>
+<p>What about looking up the number of likes for a particular post? That’s a bit more complicated. The “likes” table is a many to many relation between unique posts and unique readers. This implies the need for the aggregate function <code>COUNT</code>.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="ot">getPostLikesCount ::</span> <span class="dt">Text.Text</span> <span class="ot">-&gt;</span> <span class="dt">SqliteM</span> (<span class="dt">Maybe</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">getPostLikesCount postStringId <span class="fu">=</span> runSelectReturningOne <span class="fu">$</span> select <span class="fu">$</span></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">  aggregate_ (\_ <span class="ot">-&gt;</span> countAll_) <span class="fu">$</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb6-4" data-line-number="4">    posts <span class="ot">&lt;-</span> all_ (_blogPosts blogDb)</a>
+<a class="sourceLine" id="cb6-5" data-line-number="5">    likes <span class="ot">&lt;-</span> oneToMany_ (_blogLikes blogDb) _likePostKey posts    </a>
+<a class="sourceLine" id="cb6-6" data-line-number="6">    guard_ (_postStringId posts <span class="fu">==.</span> val_ postStringId)</a>
+<a class="sourceLine" id="cb6-7" data-line-number="7">    pure likes</a></code></pre></div>
+<p>The <code>do</code> block here is basically a query for all the rows to count. First take all posts. Then, for every post, find all the likes that refence that post. Finally only keep the rows whose <code>string_id</code> column is the one that we are interested in. Feeding that <code>do</code> block to <code>aggregate_ (\_ -&gt; countAll_)</code> counts all the retrieved rows. This actually gets compiled to something like:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="kw">SELECT</span> <span class="fu">COUNT</span>(*) <span class="kw">AS</span> <span class="ot">&quot;res0&quot;</span> </a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">  <span class="kw">FROM</span> <span class="ot">&quot;posts&quot;</span> <span class="kw">AS</span> <span class="ot">&quot;t0&quot;</span> </a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">  <span class="kw">INNER</span> <span class="kw">JOIN</span> <span class="ot">&quot;likes&quot;</span> <span class="kw">AS</span> <span class="ot">&quot;t1&quot;</span> </a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">  <span class="kw">ON</span> (<span class="ot">&quot;t1&quot;</span>.<span class="ot">&quot;post_key__id&quot;</span>)=(<span class="ot">&quot;t0&quot;</span>.<span class="ot">&quot;id&quot;</span>) </a>
+<a class="sourceLine" id="cb7-5" data-line-number="5">  <span class="kw">WHERE</span> (<span class="ot">&quot;t0&quot;</span>.<span class="ot">&quot;string_id&quot;</span>)=(?);</a></code></pre></div>
+<p>This is the same query that I would have written if I had been using SQL directly. Awesome!</p>
+<p>With these “basic” blocks, I can build two higher abstractions: <code>incrementLikesCount</code>, which inserts a like to a post and then returns the updated likes count, and <code>getLikesCount</code>, which counts the number of likes for a particular post. These two functions are the ones that I expose so that they can be used in my Scotty actions.</p>
+<h2 id="using-beam-queries-in-scotty-actions">Using Beam queries in Scotty actions</h2>
+<p>Now that the queries are ready is time to use them in the Scotty actions that handle the HTTP requests. Beam queries run on <code>IO</code>, but Scotty actions run on <code>ActionM</code>, so we are going to need some lifting. <a href="https://chrispenner.ca/posts/monadio-considered-harmful">Too much IO can be harmful</a>, so I created a new typeclass for my queries, and implemented an instance for <code>ActionM</code> that uses Scotty’s <code>liftAndCatchIO</code> to run the queries.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">class</span> <span class="dt">DBClient</span> m <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-2" data-line-number="2"><span class="ot">  incrementLikesCount ::</span> <span class="dt">Connection</span> </a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">                      <span class="ot">-&gt;</span> <span class="dt">LikeInfo</span> <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb8-4" data-line-number="4"><span class="ot">  getLikesCount ::</span> <span class="dt">Connection</span> </a>
+<a class="sourceLine" id="cb8-5" data-line-number="5">                <span class="ot">-&gt;</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> m (<span class="dt">Maybe</span> <span class="dt">Int</span>)</a>
+<a class="sourceLine" id="cb8-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb8-7" data-line-number="7"><span class="kw">instance</span> <span class="dt">DBClient</span> <span class="dt">ActionM</span> <span class="kw">where</span></a>
+<a class="sourceLine" id="cb8-8" data-line-number="8">  incrementLikesCount conn likeInfo <span class="fu">=</span> </a>
+<a class="sourceLine" id="cb8-9" data-line-number="9">    liftAndCatchIO <span class="fu">$</span> Q.incrementLikesCount conn likeInfo</a>
+<a class="sourceLine" id="cb8-10" data-line-number="10">  getLikesCount conn postStringId <span class="fu">=</span> </a>
+<a class="sourceLine" id="cb8-11" data-line-number="11">  liftAndCatchIO <span class="fu">$</span> Q.getLikesCount conn postStringId</a></code></pre></div>
+<p><code>getLikesCount</code> is fairly easy to understand, it takes a SQLite connection and the string ID of the post whose likes count we are interested in. <code>incrementLikesCount</code> is not so obvious because its second argument is <code>LikeInfo</code>, which I haven’t talked about yet. <code>LikeInfo</code> is mere record containing all the data needed to store that like: IP address, user agent and post ID. So, <code>incrementLikesCount</code> takes a SQLite connection, and the necessary data to insert before the likes count can be incremented.</p>
+<p>Now that the queries can be easily called from Scotty actions we can go back to the route handlers <code>postLike</code> and <code>getLikes</code>. Remember those? They handle <code>POST /like</code> and <code>GET /like</code> respectively. This is the final implementation <code>postLike</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="ot">getNewLikeInfoFromRequest ::</span> <span class="dt">ActionM</span> (<span class="dt">Either</span> <span class="dt">APIError</span> <span class="dt">LikeInfo</span>)</a>
+<a class="sourceLine" id="cb9-2" data-line-number="2">getNewLikeInfoFromRequest <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb9-3" data-line-number="3">  ipAddress <span class="ot">&lt;-</span> getIpAddress</a>
+<a class="sourceLine" id="cb9-4" data-line-number="4">  userAgent <span class="ot">&lt;-</span> getUserAgent</a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">  postStringId <span class="ot">&lt;-</span> param <span class="st">&quot;stringId&quot;</span></a>
+<a class="sourceLine" id="cb9-6" data-line-number="6">  <span class="kw">let</span> readerInfo <span class="fu">=</span> <span class="dt">ReaderInfo</span> <span class="fu">&lt;$&gt;</span> ipAddress <span class="fu">&lt;*&gt;</span> userAgent</a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">  return <span class="fu">$</span> <span class="dt">LikeInfo</span> postStringId <span class="fu">&lt;$&gt;</span> readerInfo</a>
+<a class="sourceLine" id="cb9-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb9-9" data-line-number="9"><span class="ot">respondWithLikesCount ::</span> <span class="dt">Int</span> <span class="ot">-&gt;</span> <span class="dt">ActionM</span> ()</a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">respondWithLikesCount likesCount <span class="fu">=</span> text <span class="fu">$</span> pack <span class="fu">$</span> show likesCount</a>
+<a class="sourceLine" id="cb9-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb9-12" data-line-number="12"><span class="ot">postLike ::</span> <span class="dt">SQLite.Connection</span> <span class="ot">-&gt;</span> <span class="dt">ActionM</span> ()</a>
+<a class="sourceLine" id="cb9-13" data-line-number="13">postLike conn <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb9-14" data-line-number="14">  likeInfo <span class="ot">&lt;-</span> getNewLikeInfoFromRequest</a>
+<a class="sourceLine" id="cb9-15" data-line-number="15">  whenValid likeInfo <span class="fu">$</span> \validLikeInfo <span class="ot">-&gt;</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb9-16" data-line-number="16">    <span class="dt">Just</span> likesCount <span class="ot">&lt;-</span> incrementLikesCount conn validLikeInfo</a>
+<a class="sourceLine" id="cb9-17" data-line-number="17">    respondWithLikesCount likesCount</a></code></pre></div>
+<p>First a <code>LikeInfo</code> value is built from the request. <code>getNewLikeInfoFromRequest</code> is an action that attempts to read all the necessary data from a request, and it can either return an error, or the correct data. Then I use this helper function <code>whenValid</code> that calls the passed lambda function with valid data when <code>likeInfo</code> has a <code>Right</code> constructor otherwise it sends the HTTP response with the <code>APIError</code>’s bad status code. When the request data is valid, <code>incrementLikesCount</code> is invoked and an HTTP response with plain text containing the updated likes count is sent back to the client.</p>
+<p><code>getLikes</code> is way simpler, here’s the implementation:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="ot">getLikes ::</span> <span class="dt">SQLite.Connection</span> <span class="ot">-&gt;</span> <span class="dt">ActionM</span> ()</a>
+<a class="sourceLine" id="cb10-2" data-line-number="2">getLikes conn <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb10-3" data-line-number="3">  postStringId <span class="ot">&lt;-</span> param <span class="st">&quot;stringId&quot;</span></a>
+<a class="sourceLine" id="cb10-4" data-line-number="4">  <span class="dt">Just</span> likesCount <span class="ot">&lt;-</span> getLikesCount conn postStringId</a>
+<a class="sourceLine" id="cb10-5" data-line-number="5">  respondWithLikesCount likesCount</a></code></pre></div>
+<p>It simply reads the string ID from the URL params, and then runs the <code>getLikesCount</code> query and responds with the likes count. I don’t need to check the value of <code>postStringId</code>, because if it is not present, then Scotty immediately throws an error and ends up returning a bad status code.</p>
+<p>That’s all I need from this API for now. In the future I might want to add more endpoints for whatever new needs I might have. The next thing to do is to create a widget that lets the user interact with the server using these endpoints. The next post will be about how the like button at the bottom of this page was implemented with JavaScript using <a href="https://mithril.js.org/">Mithril</a>.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>
