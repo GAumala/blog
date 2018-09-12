@@ -56,7 +56,7 @@ that was missing was a way to talk to the database from Haskell.
 
 I've always disliked ORMs and any other attempts to abstract SQL from
 application code. Yes, I understand that SQL injection is a thing, but I like
-SQL and although it is a standard every database that implements it is
+SQL and, although it is a standard, every database that implements it is
 different. [ORMs can be very problematic
 ](https://blog.acolyer.org/2018/06/28/how-_not_-to-structure-your-database-backed-web-applications-a-study-of-performance-bugs-in-the-wild/).
 You might end up with a simple system if you just embrace SQL, even if it
@@ -67,7 +67,7 @@ database abstractions but I decided to give [Beam](
 http://tathougies.github.io/beam/) a try. The reason is that I don't claim to 
 be right about absolutely everything and I was very curious about what would 
 be the "Haskell way" of working with databases. One cool thing about Beam, 
-and other similar Haskell libraries, is that makes the user responsible for 
+and other similar Haskell libraries, is that it makes the user responsible for 
 opening and managing the database instead of magically doing it for you under 
 the hood. This is actually good because it means that I can always fallback to 
 sending raw queries with [`sqlite-simple`](
@@ -110,17 +110,17 @@ create table likes(
 );
 ```
 
-I only have three tables. The first one is for posts, excluiding the primary key 
-it only has one field: the id of the post, which is just a string with the last 
-segment in it's path. 
+I only have trree tables. The first one is for posts, and excluding the primary 
+key, it only has one field: the ID of the post, which is just a string with the last 
+segment in its path. 
 
-The second table is for readers, it stores IP adresses and user agent strings. 
+The second table is for readers. It stores IP adresses and user agent strings. 
 The reader table also has an index that ensure that each `ip_address` and 
 `user_agent` pair must be unique, which means that for this system a reader is
-a unique combination of ip address and user agent. This is totally not real, but
+a unique combination of IP address and user agent. This is totally not real, but
 it is a good approximation for me. 
 
-The third table, "likes", is just a relation between many readers and many posts. 
+The third table, "likes," is just a relation between many readers and many posts. 
 I let users like the same post as many times as they want because the 
 `ip_address` and `user_agent` combination of the "readers" table is not unique 
 at all. A like is merely a combination of a user and a  post, somebody liked 
@@ -225,8 +225,8 @@ blogDb = defaultDbSettings
 
 The important thing here is that the names of the record fields for table types 
 must be prefixed with an underscore followed by the table's name, otherwise 
-Beam won't be able to work with the existing schema. For example the reader
-table has a `ip_address` column, so the equivalent record field is
+Beam won't be able to work with the existing schema. For example, the reader
+table has an `ip_address` column, so the equivalent record field is
 `_readerIpAddress`. Foreign keys in the likes table also need special names 
 like `post_key__id`. Having to use underscores for column names may be a bit 
 too opinionated, but I can live with it.
@@ -253,15 +253,15 @@ return $ pk newPost
 
 The post table only holds the string ID of the post, so that's the only argument
 for this function. Here, the expression `Post default_ (val_ stringId)` is
-inserted, which just means "A new post row with an autoincrement id, and the 
-provided string ID". This whole expression thing might be a little hard to
+inserted, which just means "A new post row with an autoincrement ID, and the 
+provided string ID." This whole expression thing might be a little hard to
 understand, but it's a really great way of storing rows with auto increment
 fields. In popular ORMs found in imperative languages, you usually have to set a `0` 
 or `-1` to an auto increment field during insertion, and it feels like a hack
-when compared to Beam's approach. Finally, `return $ pk newPost`, returns the new 
+when compared to Beam's approach. Finally, `return $ pk newPost` returns the new 
 post's primary key, which will be needed to insert a row to the likes table. 
 
-After inserting a few posts, they can looked up with this function:
+After inserting a few posts, they can be looked up with this function:
 
 ``` Haskell
 findPostByStringId :: Text.Text -> SqliteM (Maybe Post)
@@ -276,7 +276,7 @@ This function takes a string ID as argument and returns a record with that exact
 same ID, or `Nothing` if there's none. Here you can see how Beam's DSL starts to
 shine. The three main functions are `select`, `filter_`, and `all_`. Together
 they basically tell SQLite "I want you to select all the rows from the posts
-table that satisfy this filter". The function `runSelectReturningOne` wraps the
+table that satisfy this filter." The function `runSelectReturningOne` wraps the
 result in a `Maybe` instead of the typical `List`, which is exactly what I need
 here because string IDs are meant to be unique.
 
@@ -320,7 +320,7 @@ can be used in my Scotty actions.
 
 ## Using Beam queries in Scotty actions
 
-Now that the queries are ready is time to use them in the Scotty actions that 
+Now that the queries are ready it's time to use them in the Scotty actions that 
 handle the HTTP requests. Beam queries run on `IO`, but Scotty actions run on 
 `ActionM`, so we are going to need some lifting. [Too much IO can be harmful](
 https://chrispenner.ca/posts/monadio-considered-harmful), so I created 
@@ -341,7 +341,7 @@ instance DBClient ActionM where
   liftAndCatchIO $ Q.getLikesCount conn postStringId
 ```
 
-`getLikesCount` is fairly easy to understand, it takes a SQLite connection and 
+`getLikesCount` is fairly easy to understand. It takes a SQLite connection and 
 the string ID of the post whose likes count we are interested in. 
 `incrementLikesCount` is not so obvious because its second argument is 
 `LikeInfo`, which I haven't talked about yet. `LikeInfo` is mere record 
@@ -374,11 +374,11 @@ postLike conn = do
     respondWithLikesCount likesCount
 ```
 
-First a `LikeInfo` value is built from the request. `getNewLikeInfoFromRequest`
+First, a `LikeInfo` value is built from the request. `getNewLikeInfoFromRequest`
 is an action that attempts to read all the necessary data from a request, and it
-can either return an error, or the correct data. Then I use this helper function
+can either return an error, or the correct data. Then, I use this helper function
 `whenValid` that calls the passed lambda function with valid data when `likeInfo` 
-has a `Right` constructor otherwise it sends the HTTP response with the 
+has a `Right` constructor. Otherwise it sends the HTTP response with the 
 `APIError`'s bad status code. When the request data is valid, 
 `incrementLikesCount` is invoked and an HTTP response with plain text 
 containing the updated likes count is sent back to the client.

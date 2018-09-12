@@ -52,7 +52,8 @@ following 5 parts:
 
 1. [Generating a static site with Hakyll](
     ./2018-09-07-generating-a-static-site-with-hakyll.html)
-2. Creating an HTTP API with Scotty
+2. [Creating an HTTP API with Scotty](
+    ./2018-09-12-creating-an-http-api-with-scotty-and-beam.html)
 3. Creating a like button widget with Mithril and webpack
 4. Using Nginx as a reverse proxy and static content server
 5. Continuous Integration with CircleCI
