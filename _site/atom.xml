@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>Latest Posts in gaumala.com</title>
+    <link href="https://gaumala.com/atom.xml" rel="self" />
+    <link href="https://gaumala.com" />
+    <id>https://gaumala.com/atom.xml</id>
+    <author>
+        <name>Gabriel</name>
+        <email></email>
+    </author>
+    <updated>2018-09-12T00:00:00Z</updated>
+    <entry>
+    <title>Building a Blog Part 2: Creating an HTTP API with Scotty and Beam</title>
+    <link href="https://gaumala.com/posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html" />
+    <id>https://gaumala.com/posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html</id>
+    <published>2018-09-12T00:00:00Z</published>
+    <updated>2018-09-12T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Web applications in Haskell with Scotty and Beam]]></summary>
+</entry>
+<entry>
+    <title>Building a Blog Part 1: Generating a static site with Hakyll</title>
+    <link href="https://gaumala.com/posts/2018-09-07-generating-a-static-site-with-hakyll.html" />
+    <id>https://gaumala.com/posts/2018-09-07-generating-a-static-site-with-hakyll.html</id>
+    <published>2018-09-07T00:00:00Z</published>
+    <updated>2018-09-07T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Static sites with Haskell using the Hakyll library]]></summary>
+</entry>
+<entry>
+    <title>Is this finally working? Oh, hello world!</title>
+    <link href="https://gaumala.com/posts/2018-09-03-is-this-finally-working-oh-hello-world.html" />
+    <id>https://gaumala.com/posts/2018-09-03-is-this-finally-working-oh-hello-world.html</id>
+    <published>2018-09-03T00:00:00Z</published>
+    <updated>2018-09-03T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Hello World!]]></summary>
+</entry>
+
+</feed>
