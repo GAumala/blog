@@ -15,13 +15,6 @@ main = hakyll $ do
         route   idRoute
         compile compressCssCompiler
 
-    match "posts/*" $ do
-        route $ setExtension "html"
-        compile $ pandocCompiler
-            >>= saveSnapshot "content"
-            >>= loadAndApplyTemplate "templates/post.html"    postCtx
-            >>= relativizeUrls
-
     create ["css/post-bundle.css"] $ do
       route idRoute
       compile $ do
@@ -30,6 +23,25 @@ main = hakyll $ do
 
         makeItem ""
             >>= loadAndApplyTemplate "templates/concat.txt" styleCtx
+
+    match "posts/*" $ do
+        route $ setExtension "html"
+        compile $ pandocCompiler
+            >>= saveSnapshot "content"
+            >>= loadAndApplyTemplate "templates/post.html"    postCtx
+            >>= relativizeUrls
+
+    create ["atom.xml"] $ do
+      route idRoute
+      compile $ do 
+        posts <- fmap (take 10) . recentFirst =<< loadAll "posts/*"
+        renderAtom myFeedConfiguration postCtx posts
+
+    create ["rss/posts.rss"] $ do
+      route idRoute
+      compile $ do 
+        posts <- fmap (take 10) . recentFirst =<< loadAll "posts/*"
+        renderRss myFeedConfiguration postCtx posts
 
     match "index.html" $ do
         route idRoute
@@ -52,3 +64,12 @@ postCtx =
     dateField "date" "%B %e, %Y"   `mappend`
     teaserField "teaser" "content" `mappend`
     defaultContext
+
+myFeedConfiguration :: FeedConfiguration
+myFeedConfiguration = FeedConfiguration
+    { feedTitle       = "Latest Posts in gaumala.com"
+    , feedDescription = "My latest blog posts"
+    , feedAuthorName  = "Gabriel"
+    , feedAuthorEmail = ""
+    , feedRoot        = "https://gaumala.com"
+    }
