@@ -32,14 +32,14 @@ nav img {
   vertical-align: middle;
 }
 
-nav img#github {
+nav img.icon {
   height: 1.7rem;
   width: 1.7rem;
 }
 
-nav img#twitter {
-  height: 1.7rem;
-  width: 1.7rem;
+nav img.icon-rss {
+  height: 1.5rem;
+  width: 1.5rem;
 }
 
 h3 {
