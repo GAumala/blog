@@ -18,10 +18,10 @@ const LikeButton = {
 }
 
 const app = () => {
-  let likesCount = "??";
   let liked = false;
-  let lastCountFromServer = "??"
-  let footerMsg = "If you liked this post, please hit this like button to show your appreciation."
+  let likesCount = "??";
+  let lastCountFromServer = likesCount;
+  let footerMsg = "If you liked this post, please hit this like button to show your appreciation.";
 
   const updateLikesCounter = newValue => { 
     likesCount = newValue; 
@@ -47,10 +47,11 @@ const app = () => {
       .catch(undoLike);
   }
 
-  return ({
-    oncreate: () =>
-      getLikesCount().then(updateLikesCounter, () => {}),
+  const onCreateButton = () =>
+    getLikesCount().then(updateLikesCounter, () => {})
 
+  return ({
+    oncreate: onCreateButton,
     view: () => 
       <table className="like-footer">
         <tr>

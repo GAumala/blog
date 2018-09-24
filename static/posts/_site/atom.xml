@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>Latest Posts in gaumala.com</title>
+    <link href="https://gaumala.com/atom.xml" rel="self" />
+    <link href="https://gaumala.com" />
+    <id>https://gaumala.com/atom.xml</id>
+    <author>
+        <name>Gabriel</name>
+        <email></email>
+    </author>
+    <updated>Unknown</updated>
+    
+</feed>

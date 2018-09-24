@@ -110,11 +110,11 @@ create table likes(
 );
 ```
 
-I only have trree tables. The first one is for posts, and excluding the primary 
+I only have three tables. The first one is for posts, and excluding the primary 
 key, it only has one field: the ID of the post, which is just a string with the last 
 segment in its path. 
 
-The second table is for readers. It stores IP adresses and user agent strings. 
+The second table is for readers. It stores IP addresses and user agent strings. 
 The reader table also has an index that ensure that each `ip_address` and 
 `user_agent` pair must be unique, which means that for this system a reader is
 a unique combination of IP address and user agent. This is totally not real, but
@@ -128,7 +128,7 @@ something. The "readers" table's only purpose is to provide a little more data
 about the person who liked the post.
 
 Then I needed to implement this exact same schema with Beam. This has a lot 
-of boilerplate, and I'm definetely not the best to explain it, but you can see 
+of boilerplate, and I'm definitely not the best to explain it, but you can see 
 it here:
 
 ``` Haskell
@@ -296,7 +296,7 @@ getPostLikesCount postStringId = runSelectReturningOne $ select $
 ```
 
 The `do` block here is basically a query for all the rows to count. First take
-all posts. Then, for every post, find all the likes that refence that post.
+all posts. Then, for every post, find all the likes that reference that post.
 Finally only keep the rows whose `string_id` column is the one that we are
 interested in. Feeding that `do` block to `aggregate_ (\_ -> countAll_)` counts 
 all the retrieved rows. This actually gets compiled to something like:

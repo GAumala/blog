@@ -23,7 +23,7 @@ like the next step, and a fun challenge as well, so I went for it.
 Before writing any code, you should always list your design goals. I thought
 about my goals for a long time, and this is what I came up with:
 
-1. **Accessibilty.** Blog posts should render correctly and efficiently 
+1. **Accessibility.** Blog posts should render correctly and efficiently 
   everywhere. I do most of my reading on my phone, so I expect everything to be
   perfectly readable on small screens. A lot of people have slow internet 
   connections and/or low-end devices. I know, because I've been there. There's 
@@ -36,7 +36,7 @@ about my goals for a long time, and this is what I came up with:
    have statistics about site usage, but such data should be gathered in a way
    that is anonymous, unobtrusive, and only if the user explicitly agreed to
    participate.
-3. **Mantainable.** I will be mantaining this on my own free time, which is 
+3. **Maintainable.** I will be maintaining this on my own free time, which is 
    *very* limited, so things should be as simple as possible. Everything should
    be automated, unless the task at hand is too ambiguous or dangerous for a 
    machine to do it. I shouldn't have to reinvent the wheel unless I'm having 

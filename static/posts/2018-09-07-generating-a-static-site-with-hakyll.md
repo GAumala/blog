@@ -118,7 +118,7 @@ template named `concat.txt`:
 
 This template just looks in its context for a list value named "items" and
 concatenates all of the list items into a single text file. It even retains the
-CSS minifactions done by the `compressCSSCompiler`. All there is left to
+CSS minifications done by the `compressCSSCompiler`. All there is left to
 do is to load all the necessary CSS files and apply the template like this:
 
 ``` Haskell
