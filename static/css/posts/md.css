@@ -21,3 +21,9 @@ pre {
 pre code {
   background-color: rgba(0,0,0,0.0);
 }
+
+blockquote {
+  color: #6a737d;
+  border-left: 0.25em solid #dfe2e5;
+  padding: 0 1em;
+}
