@@ -15,7 +15,7 @@
     <id>https://gaumala.com/posts/2018-09-25-creating-a-like-button-with-mithril.html</id>
     <published>2018-09-25T00:00:00Z</published>
     <updated>2018-09-25T00:00:00Z</updated>
-    <summary type="html"><![CDATA[Web applications in Haskell with Scotty and Beam]]></summary>
+    <summary type="html"><![CDATA[Writing a like button with modern front-end development tools like Mithril, Babel and webpack.]]></summary>
 </entry>
 <entry>
     <title>Building a Blog Part 2: Creating an HTTP API with Scotty and Beam</title>

@@ -11,7 +11,7 @@
         <item>
     <title>Building a Blog Part 3: Creating a Like button widget with Mithril and webpack</title>
     <link>https://gaumala.com/posts/2018-09-25-creating-a-like-button-with-mithril.html</link>
-    <description><![CDATA[Web applications in Haskell with Scotty and Beam]]></description>
+    <description><![CDATA[Writing a like button with modern front-end development tools like Mithril, Babel and webpack.]]></description>
     <pubDate>Tue, 25 Sep 2018 00:00:00 UT</pubDate>
     <guid>https://gaumala.com/posts/2018-09-25-creating-a-like-button-with-mithril.html</guid>
     <dc:creator>Gabriel</dc:creator>
