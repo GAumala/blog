@@ -74,7 +74,7 @@
 </ul>
 <p>I like to use different files for development, but serving a single stylesheet has better performance because it reduces the number of HTTP requests that the browser needs to send to the server in order to render the page, so I needed some way of merging all these little files. The solution for this is to concatenate them with a Hakyll rule. To achieve that I use this simple template named <code>concat.txt</code>:</p>
 <pre><code> $for(items)$$body$$endfor$</code></pre>
-<p>This template just looks in its context for a list value named “items” and concatenates all of the list items into a single text file. It even retains the CSS minifactions done by the <code>compressCSSCompiler</code>. All there is left to do is to load all the necessary CSS files and apply the template like this:</p>
+<p>This template just looks in its context for a list value named “items” and concatenates all of the list items into a single text file. It even retains the CSS minifications done by the <code>compressCSSCompiler</code>. All there is left to do is to load all the necessary CSS files and apply the template like this:</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="ot">main ::</span> <span class="dt">IO</span> ()</a>
 <a class="sourceLine" id="cb5-2" data-line-number="2">main <span class="fu">=</span> hakyll <span class="fu">$</span> <span class="kw">do</span></a>
 <a class="sourceLine" id="cb5-3" data-line-number="3">    <span class="co">-- More rules...</span></a>
