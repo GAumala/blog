@@ -1,6 +1,6 @@
 ---
 title: "Building a Blog Part 3: Creating a Like button widget with Mithril and webpack"
-description: "Web applications in Haskell with Scotty and Beam"
+description: "Writing a like button with modern front-end development tools like Mithril, Babel and webpack."
 keywords: JavaScript,ES6,Babel,webpack,Mithril,widget,button
 ---
 
