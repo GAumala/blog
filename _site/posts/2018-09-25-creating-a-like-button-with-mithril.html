@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="keywords" content="JavaScript,ES6,Babel,webpack,Mithril,widget,button">
+    <meta name="keywords" content="JavaScript,ES6,Babel,webpack,Mithril,mithril.js,widget,button,tutorial">
     <meta name="description" content="Writing a like button with modern front-end development tools like Mithril, Babel and webpack." />
     <meta name="twitter:card" content="summary">
     <meta name="twitter:description" content="Writing a like button with modern front-end development tools like Mithril, Babel and webpack.">
@@ -32,7 +32,7 @@
     <div class="date"><span>September 25, 2018</span></div>
     <article>
       <section>
-        <p>In part 3 of <a href="./2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about the implementation of the like button at the bottom of every post in this website. The goal is to have an interactive widget that lets users see the number of likes for the post they are currently reading and optionally increment it by one unit. It is written with <a href="https://mithril.js.org/">Mithril</a>, a modern JavaScript framework for fast <a href="https://en.wikipedia.org/wiki/Single-page_application">Single Page Applications</a>.</p>
+        <p>In part 3 of <a href="./posts/2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about the implementation of the like button at the bottom of every post in this website. The goal is to have an interactive widget that lets users see the number of likes for the post they are currently reading and optionally increment it by one unit. It is written with <a href="https://mithril.js.org/">Mithril</a>, a modern JavaScript framework for fast <a href="https://en.wikipedia.org/wiki/Single-page_application">Single Page Applications</a>.</p>
 <!--more-->
 <h2 id="why-a-javascript-framework">Why a JavaScript framework?</h2>
 <p>For a like button, A <code>button</code> inside a <code>form</code> certainly gets the job done with zero JavaScript, but there is a little problem. The page reloads every time the form submits a POST request, which is not the best user experience in this case. The better approach is to use <a href="https://developer.mozilla.org/en-US/docs/Web/Guide/AJAX">AJAX</a> so we are going to need at least a little JavaScript. On top of that, the button has a state, it is either pressed (you liked the post) or it isn’t. The button’s visual appearance and behavior changes depending on the state. Managing state is not a simple task so it’s better to use a tool that is designed to efficiently update the UI every time state changes.</p>
