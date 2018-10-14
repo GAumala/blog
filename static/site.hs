@@ -7,7 +7,7 @@ import           Hakyll
 --------------------------------------------------------------------------------
 main :: IO ()
 main = hakyll $ do
-    match "assets/**/*" $ do
+    match ("assets/**/*" .||. "js/*") $ do
       route   idRoute
       compile copyFileCompiler
 
