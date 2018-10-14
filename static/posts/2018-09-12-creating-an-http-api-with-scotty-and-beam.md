@@ -5,7 +5,7 @@ keywords: Haskell,Scotty,Beam,Web,Application,HTTP,API
 ---
 
 In part 2 of [Building a Blog](
-./2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
+./posts/2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk
 about how the small HTTP API used by this blog was implemented. Once
 again, because I like Haskell, I'll use the [Scotty](
 https://github.com/scotty-web/scotty) web framework to listen to HTTP requests 

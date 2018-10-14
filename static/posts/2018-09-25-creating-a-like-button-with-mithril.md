@@ -1,12 +1,12 @@
 ---
 title: "Building a Blog Part 3: Creating a Like button widget with Mithril and webpack"
 description: "Writing a like button with modern front-end development tools like Mithril, Babel and webpack."
-keywords: JavaScript,ES6,Babel,webpack,Mithril,widget,button
+keywords: JavaScript,ES6,Babel,webpack,Mithril,mithril.js,widget,button,tutorial
 ---
 
 In part 3 of [Building a Blog](
-./2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk about
-the implementation of the like button at the bottom of every post in this 
+./posts/2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
+about the implementation of the like button at the bottom of every post in this
 website. The goal is to have an interactive widget that lets users see the 
 number of likes for the post they are currently reading and optionally increment 
 it by one unit. It is written with [Mithril](https://mithril.js.org/), a modern 

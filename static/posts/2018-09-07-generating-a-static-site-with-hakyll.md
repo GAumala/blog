@@ -5,8 +5,8 @@ keywords: Haskell,Hakyll,CSS,fonts,JavaScript,blog,site
 ---
 
 In part 1 of [Building a Blog](
-./2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
-about how the static pages served in this blog are generated. Writing HTML 
+./posts/2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk
+about how the static pages served in this blog are generated. Writing HTML
 for every posts is too low level and cumbersome. I don't need to rewrite the 
 structure of the page for every post. It's better to write the content in a 
 more high level language like markdown and convert it to HTML using a 
