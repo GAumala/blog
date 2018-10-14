@@ -25,11 +25,11 @@ location = /ci/CI_SECRET {
         proxy_pass http://localhost:API_PORT;
 }
 
-location ~* \.(jpg|jpeg|png|gif|svg|ttf)$ {
-    add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri $uri/ =404;
+location /assets {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
 }
 
-location ~* \.(html|css|js|ico)$ {
-        try_files $uri $uri/ =404;
+location / {
+    try_files $uri =404;
 }
