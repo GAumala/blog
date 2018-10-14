@@ -27,9 +27,9 @@ location = /ci/CI_SECRET {
 
 location /assets {
         add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri =404;
+        try_files $uri $uri/ =404;
 }
 
 location / {
-    try_files $uri =404;
+    try_files $uri $uri/ =404;
 }
