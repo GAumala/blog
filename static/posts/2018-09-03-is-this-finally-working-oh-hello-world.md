@@ -54,8 +54,10 @@ following 5 parts:
     ./2018-09-07-generating-a-static-site-with-hakyll.html)
 2. [Creating an HTTP API with Scotty](
     ./2018-09-12-creating-an-http-api-with-scotty-and-beam.html)
-3. Creating a like button widget with Mithril and webpack
-4. Using Nginx as a reverse proxy and static content server
+3. [Creating a like button widget with Mithril and webpack](
+    ./2018-09-25-creating-a-like-button-with-mithril.html)
+4. [Using Nginx as a reverse proxy and static file server](
+    ./2018-12-22-using-nginx-as-a-reverse-proxy-and-static-file-server.html)
 5. Continuous Integration with CircleCI
 
 I'll update this list with the appropriate links after publishing every article.
