@@ -5,9 +5,9 @@ keywords: Nginx,m4,tutorial,proxy,server
 ---
 
 In part 4 of [Building a Blog](
-./posts/2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
+./2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
 about Nginx and how it is configured to serve [static
-files](./posts/2018-09-07-generating-a-static-site-with-hakyll.html) efficiently and 
+files](./2018-09-07-generating-a-static-site-with-hakyll.html) efficiently and 
 forward API requests to my [Scotty server](
 ./2018-09-12-creating-an-http-api-with-scotty-and-beam.html). The goal 
 is to have Nginx as a secure and performant entry point to my site. 
@@ -97,7 +97,7 @@ https://github.com/GAumala/blog/tree/master/nginx). You'll see that there are
 only 3 variables:
 
 - `API_PORT`: The port in which the blog's [backend](
-./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html) listens.
+./2018-09-12-creating-an-http-api-with-scotty-and-beam.html) listens.
 - `SITE_PATH`: The location of the blog's static files (HTML, CSS & JS).  
 - `CI-SECRET`: A secret string used by Circle CI to update the blog after a `git
   push`.
@@ -172,7 +172,7 @@ https://www.netguru.co/codestories/nginx-tutorial-performance).
 
 My blog exposes an HTTP API to like blog posts using a [Scotty server that 
 records every like button click into SQLite database](
-./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html). SQLite is 
+./2018-09-12-creating-an-http-api-with-scotty-and-beam.html). SQLite is 
 not really designed for web applications, but it's still pretty performant and
 good enough for small sites like this one. I love the simplicity of an embedded 
 database and not having to deal with another huge system like MySQL or Postgres. 
