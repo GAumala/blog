@@ -9,7 +9,7 @@ In part 4 of [Building a Blog](
 about Nginx and how it is configured to serve [static
 files](./posts/2018-09-07-generating-a-static-site-with-hakyll.html) efficiently and 
 forward API requests to my [Scotty server](
-./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html). The goal 
+./2018-09-12-creating-an-http-api-with-scotty-and-beam.html). The goal 
 is to have Nginx as a secure and performant entry point to my site. 
 
 <!--more-->
