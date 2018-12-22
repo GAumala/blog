@@ -18,6 +18,8 @@ jobs:
           working_directory: './api'
           command: |
             stack setup
+            # this is pretty big so disable optimizations and limit
+            # to one job to avoid running out of memory
             stack build -j1 --fast --dependencies-only
             stack test
       - run:
