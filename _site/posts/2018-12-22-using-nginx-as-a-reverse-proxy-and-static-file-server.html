@@ -32,7 +32,7 @@
     <div class="date"><span>December 22, 2018</span></div>
     <article>
       <section>
-        <p>In part 4 of <a href="./posts/2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about Nginx and how it is configured to serve <a href="./posts/2018-09-07-generating-a-static-site-with-hakyll.html">static files</a> efficiently and forward API requests to my <a href="./2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server</a>. The goal is to have Nginx as a secure and performant entry point to my site.</p>
+        <p>In part 4 of <a href="./2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about Nginx and how it is configured to serve <a href="./2018-09-07-generating-a-static-site-with-hakyll.html">static files</a> efficiently and forward API requests to my <a href="./2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server</a>. The goal is to have Nginx as a secure and performant entry point to my site.</p>
 <!--more-->
 <h2 id="why-nginx">Why Nginx</h2>
 <p>The web is wild. There are all kinds of web clients and specifications aren’t followed 100% of the time. There are also malicious folks trying to bring your site down. In a production environment, it’s better to have your application behind a robust and performant HTTP server like Nginx. It has every feature that you could possibly need. The ones I’m most interested in are:</p>
@@ -66,7 +66,7 @@
 <p>In my case, I use <a href="https://www.gnu.org/software/m4/m4.html">m4 (macro language)</a> as my template engine. It doesn’t seem to be very popular among web developers, but it’s available pretty much on every Linux distro and it’s good enough for me. I found <a href="https://mbreen.com/m4.html">this site</a> to be very helpful to learn how to use it. I’m curious if there are better tools for this problem.</p>
 <p>If you take a look into my blog’s <a href="https://github.com/GAumala/blog/tree/master/nginx">config templates</a>. You’ll see that there are only 3 variables:</p>
 <ul>
-<li><code>API_PORT</code>: The port in which the blog’s <a href="./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html">backend</a> listens.</li>
+<li><code>API_PORT</code>: The port in which the blog’s <a href="./2018-09-12-creating-an-http-api-with-scotty-and-beam.html">backend</a> listens.</li>
 <li><code>SITE_PATH</code>: The location of the blog’s static files (HTML, CSS &amp; JS).<br />
 </li>
 <li><code>CI-SECRET</code>: A secret string used by Circle CI to update the blog after a <code>git push</code>.</li>
@@ -98,7 +98,7 @@ location / {
 }</code></pre>
 <p>Nginx has a lot more optimizations that for static files. My configuration was originally created by <code>certbot</code> when I set up Let’s Encrypt, so it already had some nice things like <code>tcp_nodelay</code>, <code>tcp_nopush</code>, and <code>sendfile</code> activated. You can read more about those <a href="https://www.netguru.co/codestories/nginx-tutorial-performance">in this article</a>.</p>
 <h2 id="reverse-proxy">Reverse Proxy</h2>
-<p>My blog exposes an HTTP API to like blog posts using a <a href="./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server that records every like button click into SQLite database</a>. SQLite is not really designed for web applications, but it’s still pretty performant and good enough for small sites like this one. I love the simplicity of an embedded database and not having to deal with another huge system like MySQL or Postgres. I don’t expect to receive enough traffic to crash the system any time soon, but I still think that it would be irresponsible to expose this server directly to the internet.</p>
+<p>My blog exposes an HTTP API to like blog posts using a <a href="./2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server that records every like button click into SQLite database</a>. SQLite is not really designed for web applications, but it’s still pretty performant and good enough for small sites like this one. I love the simplicity of an embedded database and not having to deal with another huge system like MySQL or Postgres. I don’t expect to receive enough traffic to crash the system any time soon, but I still think that it would be irresponsible to expose this server directly to the internet.</p>
 <p>This is why I’m using Nginx as a reverse proxy. Nginx communicates clients using SSL (provided by Let’s Encrypt) and optionally, HTTP/2. If a client sends an API request it is forwarded to the Scotty server using simpler protocols like unencrypted HTTP/1.1. Here’s the configuration for <code>/blogapi/like</code> which records a liked post when it receives a <code>POST</code> request:</p>
 <pre><code>location /blogapi/like {
         limit_req zone=post_like_limit burst=5 nodelay;
