@@ -18,7 +18,8 @@ jobs:
           working_directory: './api'
           command: |
             stack setup
-            stack build --test --dependencies-only
+            stack build -j1 --fast --dependencies-only
+            stack test
       - run:
           name: Resolve/Update Static Site Dependencies
           working_directory: './static'
