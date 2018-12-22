@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Nginx,m4,tutorial,proxy,server">
+    <meta name="description" content="Configuring Nginx as a static file server and reverse proxy." />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Configuring Nginx as a static file server and reverse proxy.">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Building a Blog Part 4: Using Nginx as a reverse proxy and static file server">
+    <meta property="og:description" content="Configuring Nginx as a static file server and reverse proxy.">
+    <title>Building a Blog Part 4: Using Nginx as a reverse proxy and static file server</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Building a Blog Part 4: Using Nginx as a reverse proxy and static file server</h1>
+    <div class="date"><span>December 22, 2018</span></div>
+    <article>
+      <section>
+        <p>In part 4 of <a href="./posts/2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about Nginx and how it is configured to serve <a href="./posts/2018-09-07-generating-a-static-site-with-hakyll.html">static files</a> efficiently and forward API requests to my <a href="./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server</a>. The goal is to have Nginx as a secure and performant entry point to my site.</p>
+<!--more-->
+<h2 id="why-nginx">Why Nginx</h2>
+<p>The web is wild. There are all kinds of web clients and specifications aren’t followed 100% of the time. There are also malicious folks trying to bring your site down. In a production environment, it’s better to have your application behind a robust and performant HTTP server like Nginx. It has every feature that you could possibly need. The ones I’m most interested in are:</p>
+<ul>
+<li>Efficient static file serving</li>
+<li>Reverse proxy with caching</li>
+<li>Rate limiting</li>
+</ul>
+<p>These things are essential for a performant site, but the thing I like the most about Nginx is how easy it is to setup <a href="https://certbot.eff.org/lets-encrypt/ubuntuxenial-nginx">Let’s Encrypt</a>. I think it’s very important to use HTTPS everywhere because:</p>
+<ul>
+<li>Your interactions with a web site should be private.</li>
+<li>No 3rd party should be able to inject ads or any extra content to a site you are visiting.</li>
+</ul>
+<p>Let’s Encrypt’s Certbot makes it really easy to use HTTPS everywhere in your server. It can even generate the necessary Nginx configuration and let you focus on other things. You can run any amount of apps and services on your server and they all can be accessed with HTTPS via Nginx without having to patch them to support HTTPS.</p>
+<h2 id="dealing-with-configuration-files">Dealing with Configuration files</h2>
+<p>Nginx is another one of those programs has so many good features that you have to edit some files under <code>/etc</code> to get it to work for your use case. This is a problem because ideally I want all the source files needed to deploy my blog under a single repository. This way, if I ever need to deploy to a new server, all I have to is run <code>git clone</code> and run some scripts. Writing configuration files is an extra step that I want to avoid.</p>
+<p>A simple solution would be to create the configuration files inside the repo and copy them to <code>/etc</code> during deploy. I think this is viable for most web apps, when the Nginx instance is used exclusively for the web app. This isn’t viable for me because I’m hosting this on a Virtual Private Server (VPS) that I also want to use to run other web apps and services. Those services should not be exposed to the internet directly, they should be behind Nginx (HTTPS everywhere!) and my blog’s source code should not know anything about them.</p>
+<p>The solution here is to separate the global Nginx configuration, which knows everything going on in the system, and the blog configuration. Lucky for me, Nginx configuration language supports an <code>include</code> directive to load extra config files from arbitrary configurations. My global Nginx configuration looks something like this:</p>
+<pre><code>http {
+  include /path/to/repo/nginx/http.conf
+
+  # More configuration
+
+  server {
+    include /path/to/repo/nginx/server.conf
+
+    # More configuration
+  }
+}</code></pre>
+<p>The next step would be to add the configuration files, but there is a little problem. Those files contain some data that should be private or is only relevant to the server where the blog is currently deployed. This data should not be part of the repository. Instead, the repository should contain configuration templates in which the server admin fills out the fields with the private data.</p>
+<p>In my case, I use <a href="https://www.gnu.org/software/m4/m4.html">m4 (macro language)</a> as my template engine. It doesn’t seem to be very popular among web developers, but it’s available pretty much on every Linux distro and it’s good enough for me. I found <a href="https://mbreen.com/m4.html">this site</a> to be very helpful to learn how to use it. I’m curious if there are better tools for this problem.</p>
+<p>If you take a look into my blog’s <a href="https://github.com/GAumala/blog/tree/master/nginx">config templates</a>. You’ll see that there are only 3 variables:</p>
+<ul>
+<li><code>API_PORT</code>: The port in which the blog’s <a href="./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html">backend</a> listens.</li>
+<li><code>SITE_PATH</code>: The location of the blog’s static files (HTML, CSS &amp; JS).<br />
+</li>
+<li><code>CI-SECRET</code>: A secret string used by Circle CI to update the blog after a <code>git push</code>.</li>
+</ul>
+<p>To generate the config files, all I have to do is define those variables when invoking <code>m4</code> in the command line:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="fu">m4</span> -DAPI_PORT=9999 -DSITE_PATH=/path/to/_site/ -DCI_SECRET=6yhfdri-ed45-24on-5342-0b24q85m4452 ./server.m4 <span class="op">&gt;</span> ./server.conf</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3"><span class="fu">m4</span> ./http.m4 <span class="op">&gt;</span> ./http.conf</a></code></pre></div>
+<h2 id="serving-static-files">Serving static files</h2>
+<p>The blog is mostly HTML and CSS files. I won’t cache these files because they are small, and I might need to correct them in case I publish a typo or something like that. Serving these files is very simple.</p>
+<pre><code>root SITE_PATH;
+
+
+location / {
+    try_files $uri $uri/ =404;
+}</code></pre>
+<p>First, set the directory containing the static files as the “server root”. Then the <code>location /</code> block uses the path of any request received by the server and looks for a file that matches the path. If it can’t find anything, it retries appending a <code>/</code>. If it still can’t find a file to serve, it returns 404.</p>
+<p>Some static files that are too big, or just don’t ever need to be updated, should be cached by clients to improve the site’s performance. To inform clients that these files should be cached I put them under <code>/assets</code> and use this configuration:</p>
+<pre><code>location /assets {
+        add_header Cache-Control &quot;public, max-age=31536000, immutable&quot;;
+        try_files $uri $uri/ =404;
+}</code></pre>
+<p>This block adds a <code>Cache-Control</code> header to the response so that browsers can avoid re-downloading the file if it’s already cached. I use <code>immutable</code> to declare that the file never changes so it should never download it more than once. If the browser does not support <code>immutable</code> it can fallback to <code>max-age=31536000</code>, which tells the browser to cache the file for a ridiculously long time.</p>
+<p>Another important thing when serving static files is GZIP compression. Text files like HTML, CSS and JS can be reduced up to like a third of its original size when using GZIP. This is a great way to save bandwidth. I enable this on my global configuration because it is so good.</p>
+<pre><code>http {
+  gzip on;
+  gzip_min_length 1000;
+  gzip_types      application/json application/xml image/svg+xml text/css text/plain;
+}</code></pre>
+<p>Nginx has a lot more optimizations that for static files. My configuration was originally created by <code>certbot</code> when I set up Let’s Encrypt, so it already had some nice things like <code>tcp_nodelay</code>, <code>tcp_nopush</code>, and <code>sendfile</code> activated. You can read more about those <a href="https://www.netguru.co/codestories/nginx-tutorial-performance">in this article</a>.</p>
+<h2 id="reverse-proxy">Reverse Proxy</h2>
+<p>My blog exposes an HTTP API to like blog posts using a <a href="./posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server that records every like button click into SQLite database</a>. SQLite is not really designed for web applications, but it’s still pretty performant and good enough for small sites like this one. I love the simplicity of an embedded database and not having to deal with another huge system like MySQL or Postgres. I don’t expect to receive enough traffic to crash the system any time soon, but I still think that it would be irresponsible to expose this server directly to the internet.</p>
+<p>This is why I’m using Nginx as a reverse proxy. Nginx communicates clients using SSL (provided by Let’s Encrypt) and optionally, HTTP/2. If a client sends an API request it is forwarded to the Scotty server using simpler protocols like unencrypted HTTP/1.1. Here’s the configuration for <code>/blogapi/like</code> which records a liked post when it receives a <code>POST</code> request:</p>
+<pre><code>location /blogapi/like {
+        limit_req zone=post_like_limit burst=5 nodelay;
+
+        rewrite ^/blogapi/like/(.*)$ /like/$1 break;
+
+        proxy_set_header  X-Real-IP $remote_addr;
+        proxy_pass http://localhost:API_PORT;
+}</code></pre>
+<p>The requests are rate limited and rewritten before being forwarded to the Scotty server listening on a different port on the same VPS. Rate limiting is super important to prevent DoS attacks. Nginx has <a href="https://www.nginx.com/blog/rate-limiting-nginx/">a great blog post about rate limiting</a> that I used as reference. The request is modified in two ways before being forwarded:</p>
+<ul>
+<li>The <code>rewrite</code> directive simply removes the <code>/blogapi/</code> prefix from the path, keeping any other path parameters intact.</li>
+<li>The <code>proxy-set-header</code> directive adds an HTTP header to the proxied request with the original request’s IP address so that the Scotty server can insert it to the database.</li>
+</ul>
+<p>The configuration for <code>blogapi/likes</code> is a bit different because it returns the number of likes that a post has when it receives a <code>GET</code> request:</p>
+<pre><code>location /blogapi/likes {
+        limit_req zone=api_limit burst=5 nodelay;
+
+        rewrite ^/blogapi/likes/(.*)$ /likes/$1 break;
+
+        proxy_pass http://localhost:API_PORT;
+        proxy_cache blog;
+        proxy_cache_valid 200 10s;
+}</code></pre>
+<p>Just like the previous endpoint, the requests here are also rate limited and rewritten. There’s no need to pass the IP address as a header since there is nothing to insert. Since this is a <code>GET</code> request, the response is set to be cached for a few seconds if the status code is 200. Caching is very useful because it avoids repeated database queries on short intervals. Because of caching, this endpoint uses a more lenient rate limit “zone”.</p>
+<p>That’s it for today. I’m pretty happy with Nginx although maybe I could do just fine with a simpler tool. The next post will be about continuous integration and how I use <a href="https://circleci.com/">CircleCI</a> to test my code and deploy the blog automatically after pushing to the master branch of my <a href="https://github.com/GAumala/blog">GitHub repository</a>.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>
