@@ -1,0 +1,392 @@
+---
+title: "Building a Blog Part 5: Continuous integration with CircleCI"
+description: "Using CircleCI to automatically deploy my blog, running Haskell code in the cloud to generate the site."
+keywords: CircleCI,JavaScript,Docker,Haskell,Hakyll,Git,GitHub
+---
+
+In part 5 of [Building a Blog](
+./2018-09-03-is-this-finally-working-oh-hello-world.html) I will talk 
+about how I automate deployments of new blog posts using [CircleCI](
+https://circleci.com/). Every time I push to the master branch of my GitHub 
+repository, a web hook is triggered and CircleCI checks out the latest code, 
+runs a few tests, and finally deploys it. This makes it really easy for me to 
+add new posts. However, the process isn't that simple under the hood, and I 
+want to explain in this post how it works.
+
+<!--more-->
+
+## Why CircleCI
+
+If you want to build high quality software you need a continuous integration
+system. This is specially true if at some point you want have multiple
+collaborators. Almost every successful project or library hosted on GitHub uses
+either [Travis CI](https://travis-ci.org) or [CircleCI](https://circleci.com/)
+to verify that new contributions don't break the code. For web applications, the
+CI system can also deploy the app after successfully building it. If you want
+to automate your deployments and make your life easier, you need a CI system. 
+
+There are few options on the internet for CI, a lot of them are even 
+free (as in free beer). Pretty much all of them integrate nicely with GitHub,
+requiring little or no configuration. I have used both Travis CI and CircleCI 
+in the past, and they are both great services. I prefer CircleCI for mostly 
+subjective reasons. What I like the most is that every build runs inside a 
+container, and you can pick any image you want for that matter. CircleCI has 
+[huge variety of pre-built images](
+https://circleci.com/docs/2.0/circleci-images/) that should cover basic 
+needs. If you need something more complex you can also choose any image uploaded
+to DockerHub, including your own. This is essential for projects like mine that 
+require multiple unrelated compilers or runtimes for building.
+
+## Preparing the build environment
+
+Since this blog uses mostly [Haskell](
+./2018-09-07-generating-a-static-site-with-hakyll.html) and a bit of [Node.js](
+2018-09-25-creating-a-like-button-with-mithril.html) to generate the HTML, CSS 
+and JS files, I need an image that has both Stack and Node.js installed in order
+to build the blog in a CircleCI job. It's not a common combination so there is no 
+ pre-built image that I can use. The good thing is that I can create my own. 
+
+I need an image with multiple tools so I should pick a Linux distro that can make
+it easy to install them. I have use Arch Linux on all my personal computers for 
+years. I think it's a great minimalistic distro so I went with that and installed 
+all dependencies via Pacman. This way I can build the blog in the cloud with same 
+environment of my development machine.
+
+``` dockerfile
+# Set base image
+FROM base/archlinux:latest
+
+# install circleCI dependencies
+RUN pacman -S --noconfirm git openssh tar gzip ca-certificates
+
+# install blog dependencies
+# stack needs make & gcc during setup
+RUN pacman -S --noconfirm make gcc nodejs yarn stack
+
+# Add utf-8 support so that hakyll can compile files with unicode chars
+RUN echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen \
+    && locale-gen \
+    && echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+
+ENV LANG en_US.UTF-8
+``` 
+
+Since a base Arch Linux install is very bare bones, containing only the 
+absolutely indispensable for the OS to function there were a few gotchas like 
+having to explicitly install `gcc` and `make` so that Stack can compile and 
+install GHC; and configuring UTF-8 support so that Hakyll can compile files with 
+Unicode characters. Once the image is uploaded to DockerHub I can reference it 
+in my CircleCI config file and all future builds will run in that container. 
+
+``` yaml
+version: 2
+jobs:
+  build:
+    docker:
+      - image: gaumala/blog-arch:0.4
+```
+
+## Running Haskell code in CircleCI
+
+Unlike JavaScript, Haskell code needs to be compiled before it can be executed.
+This process can be very intensive and unfit for constrained cloud environments.
+CircleCI builds run in virtualized machines with 2 CPUs and 4 GB RAM. If your
+build needs more memory, it will fail. 
+
+In my case, I want to run Hakyll in the cloud to generate the static pages and
+deploy them. So I need to run Stack to compile [my static site 
+generator](./2018-09-07-generating-a-static-site-with-hakyll.html). At first, 
+I used this configuration:
+
+``` yaml
+jobs:
+  build:
+    - run:
+      name: Resolve/Update Static Site Dependencies
+      working_directory: './static'
+      command: |
+        stack setup
+        stack build --dependencies-only
+```
+
+This would fail after 30 minutes or so. It turns out that Hakyll pulls a lot 
+of dependencies, generating a dependency tree of a size comparable to the one 
+generated by your typical npm project. Since all this dependencies have to be 
+compiled, the process takes significantly longer than running `npm install`. 
+
+Probably the biggest dependency here is is [Pandoc](https://pandoc.org/). The 
+build would always fail while compiling Pandoc. **Every single time.** When I 
+ran `stack build` on my local machine I noticed that RAM usage peaked at just 
+over 4 GB while compiling Pandoc, just over the limit. I was about to give up 
+on this and just generate the pages on my local machine instead of the cloud, 
+but then I found out that `stack build` supports a few flags that can reduce 
+RAM usage:
+
+- `-j1`. This limits Stack's concurrency to 1 job only. This means that Stack
+  can only compile 1 one package at any given time. Less concurrent processes
+  means less RAM usage.
+- `--fast`. This disables compiler optimizations. Since the compiler has to do
+  less work, it uses less RAM. I don't need optimizations on my static site
+  generator because I don't need to invoke it very often. In this case reducing
+  RAM usage is far more important than speed.
+
+Here is the updated configuration:
+
+``` yaml
+jobs:
+  build:
+    - run:
+      name: Resolve/Update Static Site Dependencies
+      working_directory: './static'
+      command: |
+        stack setup
+        # this is pretty big so disable optimizations and limit
+        # to one job to avoid running out of memory
+        stack build --dependencies-only -j1 --fast
+```
+
+This finally works. The build succeeds but there is one little problem here, 
+though. It takes almost a full hour to compile the whole thing! Waiting an hour
+to have a new post published sounds like bad automation. Luckily, CircleCI
+supports caching dependencies and generated binaries to drastically speed up 
+builds like this one.
+
+## Caching for faster builds
+
+To avoid wasting time compiling Pandoc every single time, I can declare in my
+CircleCI config which paths on the file system should be cached for the next 
+builds. Here's the configuration:
+
+``` yaml
+version: 2
+jobs:
+  build:
+    docker:
+      - image: gaumala/blog-arch:0.4
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore Cached Dependencies
+          keys:
+            # Always cache everything
+            - deps-
+
+      # Build all Haskell code & pull all npm packages here
+
+      - save_cache:
+          name: Cache Dependencies
+          key: deps-
+          paths:
+            - ~/.stack
+            - ./api/.stack-work
+            - ./static/.stack-work
+            - ./frontend/node_modules
+
+      # Run tests, build the site and deploy it here
+```
+
+The steps can be summarized like this:
+
+1. Checkout code from Git.
+2. Restore the cache. 
+3. Run steps that generate things that should be cached. In this case the steps
+   are:
+    - Compile the static site generator.
+    - Compile the Scotty server.
+    - Pull npm dependencies used in the frontend.
+4. Store outputs in the cache. I just have to specify the paths that should be
+   saved and on the next build they will be added to the container when
+   restoring the cache. 
+5. After caching, I can finally run tests, build and deploy the site.
+
+You might be wondering why I chose these paths for caching, so I'll explain:
+
+- The `~/.stack` directory is where Stack stores the GHC compilers it 
+  uses. This saves time during `stack setup`.
+- The `.stack-work` directories are used by Stack to place the compiled 
+  binaries. Caching this enables incremental builds. If the next builds
+  don't change the Haskell source code, which is the common case when adding
+  new posts because they are simply markdown files, nothing needs to be
+  compiled. The binaries are already there. Zero time wasted.
+- The `./frontend/node_modules` contains the npm dependencies used by the
+  frontend. Yarn will check this directory with its lockfile and avoid
+  installing modules if everything is already there.
+
+Now that everything is cached, pushing new posts can take less than 2 minutes 
+to deploy. Nice!
+
+## Deploying with webhooks
+
+After running tests and building the site, the final step is to deploy the 
+thing. How do we achieve that? There are many approaches. 
+
+Probably the easiest one is to and copy files to the server using `scp`. 
+This is a very solid approach, but I personally dislike it because I have to 
+manage SSH keys on the server, which means extra configuration that is not part 
+of my repository. Also it would be nice to have version control of the files 
+that get deployed. Instead of blindly copying files to the server I'd prefer 
+to commit them in a new [new orphan branch](
+https://git-scm.com/docs/git-checkout/1.7.3.1#git-checkout---orphan) 
+and have the server pull from that branch during every deploy. This way, if 
+something goes wrong I can use Git to quickly rollback to a previous version.
+
+What I ended up doing is having a `server` branch on GitHub with the blog's 
+generated static files and the sources for the backend. This branch is synced 
+with the server using [GitHub webhooks](
+https://developer.github.com/webhooks/). Everytime a new post is pushed to the 
+`server` branch, GitHub sends an HTTP POST request to the blog's server so that 
+it can update itself.
+
+### Listening for GitHub events on the server
+
+In order to use GitHub webhooks, I need a program on the server that listens 
+for POST requests and pulls the latest code whenever it gets updated. I already 
+have a  [Scotty server](
+./2018-09-12-creating-an-http-api-with-scotty-and-beam.html) for my blog's 
+backend so I can add a new endpoint that runs a bash script that runs a 
+`git pull` every time it receives a POST request. Here's the code that runs 
+the script:
+
+``` Haskell
+module System.Scripts (runUpdateScriptAtDir) where
+
+import System.Process
+import System.IO (IOMode(WriteMode))
+import System.Exit (ExitCode)
+import GHC.IO.Handle.FD (openFile)
+
+updateScript :: CreateProcess
+updateScript = proc "bash" ["-eo", "pipefail", "update.sh"]
+
+runUpdateScriptAtDir :: FilePath -> IO ExitCode
+runUpdateScriptAtDir workingDir = do
+  devNullHandle <- openFile "/dev/null" WriteMode
+  (_, _, _, process) <- createProcess updateScript {
+    cwd = Just workingDir, 
+    std_out = UseHandle devNullHandle, 
+    std_err = UseHandle devNullHandle
+  }
+waitForProcess process
+```
+
+It expects an `update.sh` script to exist in the specified working directory.
+It spawns a new child process that runs this script, ignoring stdout and stderr 
+and waits for its completion returning the exit code. Here is the Scotty handler 
+that runs this code:
+
+``` Haskell
+updateStaticContent :: FilePath -> ActionM ()
+updateStaticContent staticContentDir = do
+  exitCode <- liftIO $ runUpdateScriptAtDir staticContentDir
+  case exitCode of
+    ExitSuccess -> status ok200
+    ExitFailure code -> do
+      let msg = pack $ "Script exited with code " ++ (show code)
+      status internalServerError500
+text msg 
+
+runBlogAPI :: Text -> ScottyM () 
+runBlogAPI contentDir = do
+  post "/ci-hook" $ updateStaticContent contentDir
+  defaultHandler errorHandler
+```
+
+This handler runs whenever a `POST /ci-hook` request is received. It runs the 
+update script at the configured working directory and returns status code 200 
+if it succeeds, otherwise it returns status code 500. 
+
+This works pretty well. The only problem is that anyone could trigger a `git 
+pull` just by sending a POST request if it was a public endpoint. Fortunately 
+my Scotty server only listens to requests forwarded by [my Nginx instance](
+./2018-12-22-using-nginx-as-a-reverse-proxy-and-static-file-server.html). In 
+order to "hide" the endpoint, I use this configuration:
+
+``` 
+location = /ci/CI_SECRET {
+        rewrite ^ /ci-hook break;
+
+        proxy_pass http://localhost:API_PORT;
+}
+```
+
+The `=` means that the path has to be exactly the same as `/ci/CI_SECRET` where 
+`CI_SECRET` is a random string like "e7093f2c-4b04-421c-8c41-d81dba20aa0a". The
+random string is only kept by GitHub to send the requests so it is secure for 
+potential attackers.
+
+### Triggering the webhooks
+
+The server is ready to receive payloads from GitHub so now we need the code that 
+triggers the GitHub webhooks. I just use a bash script that pushes the updated 
+pages to the `server` branch. Note that to push to GitHub CircleCI needs write 
+permissions to repo. By default it only has read permissions because that's 
+enough for building the project. This is easily configured from settings though.
+
+If we go back to the CircleCI configuration, the final two steps are to generate 
+the static pages, and commit & push the updated pages to GitHub, triggering the 
+webhooks. Here's the result:
+
+``` yaml
+version: 2
+jobs:
+  build:
+    steps:
+      # ...Initial steps here...
+
+      # These are the final two steps
+      - run:
+          name: Generate Pages
+          working_directory: './static'
+          command: stack exec site build
+      - run:
+          name: Deploy 
+          command: bash .circleci/push_to_server.sh
+```
+
+If you are curious about `push_to_server.sh`, the bash script that does all 
+the Git work, here it is:
+
+``` bash 
+if [ "${CIRCLE_BRANCH}" != "master" ]; then
+  echo "Only master branch can deploy. Bye!"
+  exit 0
+fi
+
+# Store the new static pages somewhere safe 
+# before checking out the server branch
+mv ./static/_site /tmp
+git checkout server
+
+# update static files 
+rm -rf _site
+mv /tmp/_site . 
+
+# Other paths should not diverge from master
+git checkout master -- .circleci/config.yml .gitignore nginx api 
+
+# Only push to server if something did change
+if [[ `git status --porcelain` ]]; then
+  git config --global user.email job@circleci.com
+  git config --global user.name CircleCI
+  git add .
+  git commit -m "deploy #$CIRCLE_BUILD_NUM"
+  git push origin server
+else
+  echo "No changes to deploy. Bye!"
+fi
+```
+
+And that is all! Here's the recap of the whole deploy process:
+
+1. CircleCI runs tests and builds the site.
+2. If new pages have to be deployed, they are pushed to GitHub.
+3. Github sends a POST request to the Scotty server after the repo 
+  is updated.
+4. The server pulls the latest code from the `server` branch and
+  Ngninx automatically servers the updated pages.
+
+That's all I can say about my blog. I think it was pretty fun to do it. Some 
+parts are a bit too convoluted and/or over-engineered for such a small site, 
+but I did it because I don't really get to play with these tools on my day job.
+Hope you enjoyed reading this. See you around!
+
