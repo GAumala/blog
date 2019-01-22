@@ -39,7 +39,7 @@
 <p>There are few options on the internet for CI, a lot of them are even free (as in free beer). Pretty much all of them integrate nicely with GitHub, requiring little or no configuration. I have used both Travis CI and CircleCI in the past, and they are both great services. I prefer CircleCI for mostly subjective reasons. What I like the most is that every build runs inside a container, and you can pick any image you want for that matter. CircleCI has <a href="https://circleci.com/docs/2.0/circleci-images/">huge variety of pre-built images</a> that should cover basic needs. If you need something more complex you can also choose any image uploaded to DockerHub, including your own. This is essential for projects like mine that require multiple unrelated compilers or runtimes for building.</p>
 <h2 id="preparing-the-build-environment">Preparing the build environment</h2>
 <p>Since this blog uses mostly <a href="./2018-09-07-generating-a-static-site-with-hakyll.html">Haskell</a> and a bit of <a href="2018-09-25-creating-a-like-button-with-mithril.html">Node.js</a> to generate the HTML, CSS and JS files, I need an image that has both Stack and Node.js installed in order to build the blog in a CircleCI job. It’s not a common combination so there is no pre-built image that I can use. The good thing is that I can create my own.</p>
-<p>I need an image with multiple tools so I should pick a Linux distro that can make it easy to install them. I have use Arch Linux on all my personal computers for years. I think it’s a great minimalistic distro so I went with that and installed all dependencies via Pacman. This way I can build the blog in the cloud with same environment of my development machine.</p>
+<p>I need an image with multiple tools so I should pick a Linux distro that can make it easy to install them. I have used Arch Linux on all my personal computers for years. I think it’s a great minimalistic distro so I went with that and installed all dependencies via Pacman. This way I can build the blog in the cloud with same environment of my development machine.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode dockerfile"><code class="sourceCode dockerfile"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co"># Set base image</span></a>
 <a class="sourceLine" id="cb1-2" data-line-number="2"><span class="kw">FROM</span> base/archlinux:latest</a>
 <a class="sourceLine" id="cb1-3" data-line-number="3"></a>
@@ -124,8 +124,8 @@
 <li>Restore the cache.</li>
 <li>Run steps that generate things that should be cached. In this case the steps are:
 <ul>
-<li>Compile the static site generator.</li>
-<li>Compile the Scotty server.</li>
+<li>Download &amp; compile the static site generator’s dependencies.</li>
+<li>Download &amp; compile the Scotty server’s dependencies.</li>
 <li>Pull npm dependencies used in the frontend.</li>
 </ul></li>
 <li>Store outputs in the cache. I just have to specify the paths that should be saved and on the next build they will be added to the container when restoring the cache.</li>
