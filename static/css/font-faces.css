@@ -1,7 +1,13 @@
 @font-face {
   font-family: Merriweather;
   src: url("../assets/fonts/Merriweather-Light.ttf");
-  font-weight: 400;
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: Merriweather;
+  src: url("../assets/fonts/Merriweather-Bold.ttf");
+  font-weight: bold;
 }
 
 @font-face {
@@ -13,5 +19,17 @@
 @font-face {
   font-family: OpenSans;
   src: url("../assets/fonts/OpenSans-Bold.ttf");
+  font-weight: bold;
+}
+
+@font-face {
+  font-family: SourceCodePro;
+  src: url("../assets/fonts/SourceCodePro-Medium.ttf");
+  font-weight: normal;
+}
+
+@font-face {
+  font-family: SourceCodePro;
+  src: url("../assets/fonts/SourceCodePro-Bold.ttf");
   font-weight: bold;
 }
