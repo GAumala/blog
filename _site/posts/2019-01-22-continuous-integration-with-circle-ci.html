@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="CircleCI,JavaScript,Docker,Haskell,Hakyll,Git,GitHub">
+    <meta name="description" content="Using CircleCI to automatically deploy my blog, running Haskell code in the cloud to generate the site." />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Using CircleCI to automatically deploy my blog, running Haskell code in the cloud to generate the site.">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Building a Blog Part 5: Continuous integration with CircleCI">
+    <meta property="og:description" content="Using CircleCI to automatically deploy my blog, running Haskell code in the cloud to generate the site.">
+    <title>Building a Blog Part 5: Continuous integration with CircleCI</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Building a Blog Part 5: Continuous integration with CircleCI</h1>
+    <div class="date"><span>January 22, 2019</span></div>
+    <article>
+      <section>
+        <p>In part 5 of <a href="./2018-09-03-is-this-finally-working-oh-hello-world.html">Building a Blog</a> I will talk about how I automate deployments of new blog posts using <a href="https://circleci.com/">CircleCI</a>. Every time I push to the master branch of my GitHub repository, a web hook is triggered and CircleCI checks out the latest code, runs a few tests, and finally deploys it. This makes it really easy for me to add new posts. However, the process isn’t that simple under the hood, and I want to explain in this post how it works.</p>
+<!--more-->
+<h2 id="why-circleci">Why CircleCI</h2>
+<p>If you want to build high quality software you need a continuous integration system. This is specially true if at some point you want have multiple collaborators. Almost every successful project or library hosted on GitHub uses either <a href="https://travis-ci.org">Travis CI</a> or <a href="https://circleci.com/">CircleCI</a> to verify that new contributions don’t break the code. For web applications, the CI system can also deploy the app after successfully building it. If you want to automate your deployments and make your life easier, you need a CI system.</p>
+<p>There are few options on the internet for CI, a lot of them are even free (as in free beer). Pretty much all of them integrate nicely with GitHub, requiring little or no configuration. I have used both Travis CI and CircleCI in the past, and they are both great services. I prefer CircleCI for mostly subjective reasons. What I like the most is that every build runs inside a container, and you can pick any image you want for that matter. CircleCI has <a href="https://circleci.com/docs/2.0/circleci-images/">huge variety of pre-built images</a> that should cover basic needs. If you need something more complex you can also choose any image uploaded to DockerHub, including your own. This is essential for projects like mine that require multiple unrelated compilers or runtimes for building.</p>
+<h2 id="preparing-the-build-environment">Preparing the build environment</h2>
+<p>Since this blog uses mostly <a href="./2018-09-07-generating-a-static-site-with-hakyll.html">Haskell</a> and a bit of <a href="2018-09-25-creating-a-like-button-with-mithril.html">Node.js</a> to generate the HTML, CSS and JS files, I need an image that has both Stack and Node.js installed in order to build the blog in a CircleCI job. It’s not a common combination so there is no pre-built image that I can use. The good thing is that I can create my own.</p>
+<p>I need an image with multiple tools so I should pick a Linux distro that can make it easy to install them. I have use Arch Linux on all my personal computers for years. I think it’s a great minimalistic distro so I went with that and installed all dependencies via Pacman. This way I can build the blog in the cloud with same environment of my development machine.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode dockerfile"><code class="sourceCode dockerfile"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co"># Set base image</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"><span class="kw">FROM</span> base/archlinux:latest</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb1-4" data-line-number="4"><span class="co"># install circleCI dependencies</span></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5"><span class="kw">RUN</span> pacman -S --noconfirm git openssh tar gzip ca-certificates</a>
+<a class="sourceLine" id="cb1-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb1-7" data-line-number="7"><span class="co"># install blog dependencies</span></a>
+<a class="sourceLine" id="cb1-8" data-line-number="8"><span class="co"># stack needs make &amp; gcc during setup</span></a>
+<a class="sourceLine" id="cb1-9" data-line-number="9"><span class="kw">RUN</span> pacman -S --noconfirm make gcc nodejs yarn stack</a>
+<a class="sourceLine" id="cb1-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb1-11" data-line-number="11"><span class="co"># Add utf-8 support so that hakyll can compile files with unicode chars</span></a>
+<a class="sourceLine" id="cb1-12" data-line-number="12"><span class="kw">RUN</span> echo <span class="st">'en_US.UTF-8 UTF-8'</span> &gt; /etc/locale.gen \</a>
+<a class="sourceLine" id="cb1-13" data-line-number="13">    &amp;&amp; locale-gen \</a>
+<a class="sourceLine" id="cb1-14" data-line-number="14">    &amp;&amp; echo <span class="st">'LANG=en_US.UTF-8'</span> &gt; /etc/locale.conf</a>
+<a class="sourceLine" id="cb1-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb1-16" data-line-number="16"><span class="kw">ENV</span> LANG en_US.UTF-8</a></code></pre></div>
+<p>Since a base Arch Linux install is very bare bones, containing only the absolutely indispensable for the OS to function there were a few gotchas like having to explicitly install <code>gcc</code> and <code>make</code> so that Stack can compile and install GHC; and configuring UTF-8 support so that Hakyll can compile files with Unicode characters. Once the image is uploaded to DockerHub I can reference it in my CircleCI config file and all future builds will run in that container.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode yaml"><code class="sourceCode yaml"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="fu">version:</span><span class="at"> 2</span></a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="fu">jobs:</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="fu">build:</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">    <span class="fu">docker:</span></a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">      <span class="kw">-</span> <span class="fu">image:</span><span class="at"> gaumala/blog-arch:0.4</span></a></code></pre></div>
+<h2 id="running-haskell-code-in-circleci">Running Haskell code in CircleCI</h2>
+<p>Unlike JavaScript, Haskell code needs to be compiled before it can be executed. This process can be very intensive and unfit for constrained cloud environments. CircleCI builds run in virtualized machines with 2 CPUs and 4 GB RAM. If your build needs more memory, it will fail.</p>
+<p>In my case, I want to run Hakyll in the cloud to generate the static pages and deploy them. So I need to run Stack to compile <a href="./2018-09-07-generating-a-static-site-with-hakyll.html">my static site generator</a>. At first, I used this configuration:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode yaml"><code class="sourceCode yaml"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="fu">jobs:</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">  <span class="fu">build:</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">    <span class="kw">-</span> <span class="fu">run:</span></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4">      <span class="fu">name:</span><span class="at"> Resolve/Update Static Site Dependencies</span></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5">      <span class="fu">working_directory:</span><span class="at"> </span><span class="st">'./static'</span></a>
+<a class="sourceLine" id="cb3-6" data-line-number="6">      <span class="fu">command:</span><span class="at"> |</span></a>
+<a class="sourceLine" id="cb3-7" data-line-number="7">        stack setup</a>
+<a class="sourceLine" id="cb3-8" data-line-number="8">        stack build --dependencies-only</a></code></pre></div>
+<p>This would fail after 30 minutes or so. It turns out that Hakyll pulls a lot of dependencies, generating a dependency tree of a size comparable to the one generated by your typical npm project. Since all this dependencies have to be compiled, the process takes significantly longer than running <code>npm install</code>.</p>
+<p>Probably the biggest dependency here is is <a href="https://pandoc.org/">Pandoc</a>. The build would always fail while compiling Pandoc. <strong>Every single time.</strong> When I ran <code>stack build</code> on my local machine I noticed that RAM usage peaked at just over 4 GB while compiling Pandoc, just over the limit. I was about to give up on this and just generate the pages on my local machine instead of the cloud, but then I found out that <code>stack build</code> supports a few flags that can reduce RAM usage:</p>
+<ul>
+<li><code>-j1</code>. This limits Stack’s concurrency to 1 job only. This means that Stack can only compile 1 one package at any given time. Less concurrent processes means less RAM usage.</li>
+<li><code>--fast</code>. This disables compiler optimizations. Since the compiler has to do less work, it uses less RAM. I don’t need optimizations on my static site generator because I don’t need to invoke it very often. In this case reducing RAM usage is far more important than speed.</li>
+</ul>
+<p>Here is the updated configuration:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="fu">jobs:</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">  <span class="fu">build:</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">    <span class="kw">-</span> <span class="fu">run:</span></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">      <span class="fu">name:</span><span class="at"> Resolve/Update Static Site Dependencies</span></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">      <span class="fu">working_directory:</span><span class="at"> </span><span class="st">'./static'</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">      <span class="fu">command:</span><span class="at"> |</span></a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">        stack setup</a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">        <span class="co"># this is pretty big so disable optimizations and limit</span></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">        <span class="co"># to one job to avoid running out of memory</span></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">        stack build --dependencies-only -j1 --fast</a></code></pre></div>
+<p>This finally works. The build succeeds but there is one little problem here, though. It takes almost a full hour to compile the whole thing! Waiting an hour to have a new post published sounds like bad automation. Luckily, CircleCI supports caching dependencies and generated binaries to drastically speed up builds like this one.</p>
+<h2 id="caching-for-faster-builds">Caching for faster builds</h2>
+<p>To avoid wasting time compiling Pandoc every single time, I can declare in my CircleCI config which paths on the file system should be cached for the next builds. Here’s the configuration:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode yaml"><code class="sourceCode yaml"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="fu">version:</span><span class="at"> 2</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="fu">jobs:</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">  <span class="fu">build:</span></a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">    <span class="fu">docker:</span></a>
+<a class="sourceLine" id="cb5-5" data-line-number="5">      <span class="kw">-</span> <span class="fu">image:</span><span class="at"> gaumala/blog-arch:0.4</span></a>
+<a class="sourceLine" id="cb5-6" data-line-number="6">    <span class="fu">steps:</span></a>
+<a class="sourceLine" id="cb5-7" data-line-number="7">      <span class="kw">-</span> checkout</a>
+<a class="sourceLine" id="cb5-8" data-line-number="8">      <span class="kw">-</span> <span class="fu">restore_cache:</span></a>
+<a class="sourceLine" id="cb5-9" data-line-number="9">          <span class="fu">name:</span><span class="at"> Restore Cached Dependencies</span></a>
+<a class="sourceLine" id="cb5-10" data-line-number="10">          <span class="fu">keys:</span></a>
+<a class="sourceLine" id="cb5-11" data-line-number="11">            <span class="co"># Always cache everything</span></a>
+<a class="sourceLine" id="cb5-12" data-line-number="12">            <span class="kw">-</span> deps-</a>
+<a class="sourceLine" id="cb5-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb5-14" data-line-number="14">      <span class="co"># Build all Haskell code &amp; pull all npm packages here</span></a>
+<a class="sourceLine" id="cb5-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb5-16" data-line-number="16">      <span class="kw">-</span> <span class="fu">save_cache:</span></a>
+<a class="sourceLine" id="cb5-17" data-line-number="17">          <span class="fu">name:</span><span class="at"> Cache Dependencies</span></a>
+<a class="sourceLine" id="cb5-18" data-line-number="18">          <span class="fu">key:</span><span class="at"> deps-</span></a>
+<a class="sourceLine" id="cb5-19" data-line-number="19">          <span class="fu">paths:</span></a>
+<a class="sourceLine" id="cb5-20" data-line-number="20">            <span class="kw">-</span> ~/.stack</a>
+<a class="sourceLine" id="cb5-21" data-line-number="21">            <span class="kw">-</span> ./api/.stack-work</a>
+<a class="sourceLine" id="cb5-22" data-line-number="22">            <span class="kw">-</span> ./static/.stack-work</a>
+<a class="sourceLine" id="cb5-23" data-line-number="23">            <span class="kw">-</span> ./frontend/node_modules</a>
+<a class="sourceLine" id="cb5-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb5-25" data-line-number="25">      <span class="co"># Run tests, build the site and deploy it here</span></a></code></pre></div>
+<p>The steps can be summarized like this:</p>
+<ol type="1">
+<li>Checkout code from Git.</li>
+<li>Restore the cache.</li>
+<li>Run steps that generate things that should be cached. In this case the steps are:
+<ul>
+<li>Compile the static site generator.</li>
+<li>Compile the Scotty server.</li>
+<li>Pull npm dependencies used in the frontend.</li>
+</ul></li>
+<li>Store outputs in the cache. I just have to specify the paths that should be saved and on the next build they will be added to the container when restoring the cache.</li>
+<li>After caching, I can finally run tests, build and deploy the site.</li>
+</ol>
+<p>You might be wondering why I chose these paths for caching, so I’ll explain:</p>
+<ul>
+<li>The <code>~/.stack</code> directory is where Stack stores the GHC compilers it uses. This saves time during <code>stack setup</code>.</li>
+<li>The <code>.stack-work</code> directories are used by Stack to place the compiled binaries. Caching this enables incremental builds. If the next builds don’t change the Haskell source code, which is the common case when adding new posts because they are simply markdown files, nothing needs to be compiled. The binaries are already there. Zero time wasted.</li>
+<li>The <code>./frontend/node_modules</code> contains the npm dependencies used by the frontend. Yarn will check this directory with its lockfile and avoid installing modules if everything is already there.</li>
+</ul>
+<p>Now that everything is cached, pushing new posts can take less than 2 minutes to deploy. Nice!</p>
+<h2 id="deploying-with-webhooks">Deploying with webhooks</h2>
+<p>After running tests and building the site, the final step is to deploy the thing. How do we achieve that? There are many approaches.</p>
+<p>Probably the easiest one is to and copy files to the server using <code>scp</code>. This is a very solid approach, but I personally dislike it because I have to manage SSH keys on the server, which means extra configuration that is not part of my repository. Also it would be nice to have version control of the files that get deployed. Instead of blindly copying files to the server I’d prefer to commit them in a new <a href="https://git-scm.com/docs/git-checkout/1.7.3.1#git-checkout---orphan">new orphan branch</a> and have the server pull from that branch during every deploy. This way, if something goes wrong I can use Git to quickly rollback to a previous version.</p>
+<p>What I ended up doing is having a <code>server</code> branch on GitHub with the blog’s generated static files and the sources for the backend. This branch is synced with the server using <a href="https://developer.github.com/webhooks/">GitHub webhooks</a>. Everytime a new post is pushed to the <code>server</code> branch, GitHub sends an HTTP POST request to the blog’s server so that it can update itself.</p>
+<h3 id="listening-for-github-events-on-the-server">Listening for GitHub events on the server</h3>
+<p>In order to use GitHub webhooks, I need a program on the server that listens for POST requests and pulls the latest code whenever it gets updated. I already have a <a href="./2018-09-12-creating-an-http-api-with-scotty-and-beam.html">Scotty server</a> for my blog’s backend so I can add a new endpoint that runs a bash script that runs a <code>git pull</code> every time it receives a POST request. Here’s the code that runs the script:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">module</span> <span class="dt">System.Scripts</span> (runUpdateScriptAtDir) <span class="kw">where</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3"><span class="kw">import</span> <span class="dt">System.Process</span></a>
+<a class="sourceLine" id="cb6-4" data-line-number="4"><span class="kw">import</span> <span class="dt">System.IO</span> (<span class="dt">IOMode</span>(<span class="dt">WriteMode</span>))</a>
+<a class="sourceLine" id="cb6-5" data-line-number="5"><span class="kw">import</span> <span class="dt">System.Exit</span> (<span class="dt">ExitCode</span>)</a>
+<a class="sourceLine" id="cb6-6" data-line-number="6"><span class="kw">import</span> <span class="dt">GHC.IO.Handle.FD</span> (openFile)</a>
+<a class="sourceLine" id="cb6-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb6-8" data-line-number="8"><span class="ot">updateScript ::</span> <span class="dt">CreateProcess</span></a>
+<a class="sourceLine" id="cb6-9" data-line-number="9">updateScript <span class="fu">=</span> proc <span class="st">&quot;bash&quot;</span> [<span class="st">&quot;-eo&quot;</span>, <span class="st">&quot;pipefail&quot;</span>, <span class="st">&quot;update.sh&quot;</span>]</a>
+<a class="sourceLine" id="cb6-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb6-11" data-line-number="11"><span class="ot">runUpdateScriptAtDir ::</span> FilePath <span class="ot">-&gt;</span> <span class="dt">IO</span> <span class="dt">ExitCode</span></a>
+<a class="sourceLine" id="cb6-12" data-line-number="12">runUpdateScriptAtDir workingDir <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb6-13" data-line-number="13">  devNullHandle <span class="ot">&lt;-</span> openFile <span class="st">&quot;/dev/null&quot;</span> <span class="dt">WriteMode</span></a>
+<a class="sourceLine" id="cb6-14" data-line-number="14">  (_, _, _, process) <span class="ot">&lt;-</span> createProcess updateScript {</a>
+<a class="sourceLine" id="cb6-15" data-line-number="15">    cwd <span class="fu">=</span> <span class="dt">Just</span> workingDir, </a>
+<a class="sourceLine" id="cb6-16" data-line-number="16">    std_out <span class="fu">=</span> <span class="dt">UseHandle</span> devNullHandle, </a>
+<a class="sourceLine" id="cb6-17" data-line-number="17">    std_err <span class="fu">=</span> <span class="dt">UseHandle</span> devNullHandle</a>
+<a class="sourceLine" id="cb6-18" data-line-number="18">  }</a>
+<a class="sourceLine" id="cb6-19" data-line-number="19">waitForProcess process</a></code></pre></div>
+<p>It expects an <code>update.sh</code> script to exist in the specified working directory. It spawns a new child process that runs this script, ignoring stdout and stderr and waits for its completion returning the exit code. Here is the Scotty handler that runs this code:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="ot">updateStaticContent ::</span> FilePath <span class="ot">-&gt;</span> <span class="dt">ActionM</span> ()</a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">updateStaticContent staticContentDir <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">  exitCode <span class="ot">&lt;-</span> liftIO <span class="fu">$</span> runUpdateScriptAtDir staticContentDir</a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">  <span class="kw">case</span> exitCode <span class="kw">of</span></a>
+<a class="sourceLine" id="cb7-5" data-line-number="5">    <span class="dt">ExitSuccess</span> <span class="ot">-&gt;</span> status ok200</a>
+<a class="sourceLine" id="cb7-6" data-line-number="6">    <span class="dt">ExitFailure</span> code <span class="ot">-&gt;</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb7-7" data-line-number="7">      <span class="kw">let</span> msg <span class="fu">=</span> pack <span class="fu">$</span> <span class="st">&quot;Script exited with code &quot;</span> <span class="fu">++</span> (show code)</a>
+<a class="sourceLine" id="cb7-8" data-line-number="8">      status internalServerError500</a>
+<a class="sourceLine" id="cb7-9" data-line-number="9">text msg </a>
+<a class="sourceLine" id="cb7-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb7-11" data-line-number="11"><span class="ot">runBlogAPI ::</span> <span class="dt">Text</span> <span class="ot">-&gt;</span> <span class="dt">ScottyM</span> () </a>
+<a class="sourceLine" id="cb7-12" data-line-number="12">runBlogAPI contentDir <span class="fu">=</span> <span class="kw">do</span></a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">  post <span class="st">&quot;/ci-hook&quot;</span> <span class="fu">$</span> updateStaticContent contentDir</a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">  defaultHandler errorHandler</a></code></pre></div>
+<p>This handler runs whenever a <code>POST /ci-hook</code> request is received. It runs the update script at the configured working directory and returns status code 200 if it succeeds, otherwise it returns status code 500.</p>
+<p>This works pretty well. The only problem is that anyone could trigger a <code>git  pull</code> just by sending a POST request if it was a public endpoint. Fortunately my Scotty server only listens to requests forwarded by <a href="./2018-12-22-using-nginx-as-a-reverse-proxy-and-static-file-server.html">my Nginx instance</a>. In order to “hide” the endpoint, I use this configuration:</p>
+<pre><code>location = /ci/CI_SECRET {
+        rewrite ^ /ci-hook break;
+
+        proxy_pass http://localhost:API_PORT;
+}</code></pre>
+<p>The <code>=</code> means that the path has to be exactly the same as <code>/ci/CI_SECRET</code> where <code>CI_SECRET</code> is a random string like “e7093f2c-4b04-421c-8c41-d81dba20aa0a”. The random string is only kept by GitHub to send the requests so it is secure for potential attackers.</p>
+<h3 id="triggering-the-webhooks">Triggering the webhooks</h3>
+<p>The server is ready to receive payloads from GitHub so now we need the code that triggers the GitHub webhooks. I just use a bash script that pushes the updated pages to the <code>server</code> branch. Note that to push to GitHub CircleCI needs write permissions to repo. By default it only has read permissions because that’s enough for building the project. This is easily configured from settings though.</p>
+<p>If we go back to the CircleCI configuration, the final two steps are to generate the static pages, and commit &amp; push the updated pages to GitHub, triggering the webhooks. Here’s the result:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode yaml"><code class="sourceCode yaml"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="fu">version:</span><span class="at"> 2</span></a>
+<a class="sourceLine" id="cb9-2" data-line-number="2"><span class="fu">jobs:</span></a>
+<a class="sourceLine" id="cb9-3" data-line-number="3">  <span class="fu">build:</span></a>
+<a class="sourceLine" id="cb9-4" data-line-number="4">    <span class="fu">steps:</span></a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">      <span class="co"># ...Initial steps here...</span></a>
+<a class="sourceLine" id="cb9-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">      <span class="co"># These are the final two steps</span></a>
+<a class="sourceLine" id="cb9-8" data-line-number="8">      <span class="kw">-</span> <span class="fu">run:</span></a>
+<a class="sourceLine" id="cb9-9" data-line-number="9">          <span class="fu">name:</span><span class="at"> Generate Pages</span></a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">          <span class="fu">working_directory:</span><span class="at"> </span><span class="st">'./static'</span></a>
+<a class="sourceLine" id="cb9-11" data-line-number="11">          <span class="fu">command:</span><span class="at"> stack exec site build</span></a>
+<a class="sourceLine" id="cb9-12" data-line-number="12">      <span class="kw">-</span> <span class="fu">run:</span></a>
+<a class="sourceLine" id="cb9-13" data-line-number="13">          <span class="fu">name:</span><span class="at"> Deploy </span></a>
+<a class="sourceLine" id="cb9-14" data-line-number="14">          <span class="fu">command:</span><span class="at"> bash .circleci/push_to_server.sh</span></a></code></pre></div>
+<p>If you are curious about <code>push_to_server.sh</code>, the bash script that does all the Git work, here it is:</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode bash"><code class="sourceCode bash"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="kw">if</span><span class="bu"> [</span> <span class="st">&quot;</span><span class="va">${CIRCLE_BRANCH}</span><span class="st">&quot;</span> <span class="ot">!=</span> <span class="st">&quot;master&quot;</span><span class="bu"> ]</span>; <span class="kw">then</span></a>
+<a class="sourceLine" id="cb10-2" data-line-number="2">  <span class="bu">echo</span> <span class="st">&quot;Only master branch can deploy. Bye!&quot;</span></a>
+<a class="sourceLine" id="cb10-3" data-line-number="3">  <span class="bu">exit</span> 0</a>
+<a class="sourceLine" id="cb10-4" data-line-number="4"><span class="kw">fi</span></a>
+<a class="sourceLine" id="cb10-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb10-6" data-line-number="6"><span class="co"># Store the new static pages somewhere safe </span></a>
+<a class="sourceLine" id="cb10-7" data-line-number="7"><span class="co"># before checking out the server branch</span></a>
+<a class="sourceLine" id="cb10-8" data-line-number="8"><span class="fu">mv</span> ./static/_site /tmp</a>
+<a class="sourceLine" id="cb10-9" data-line-number="9"><span class="fu">git</span> checkout server</a>
+<a class="sourceLine" id="cb10-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb10-11" data-line-number="11"><span class="co"># update static files </span></a>
+<a class="sourceLine" id="cb10-12" data-line-number="12"><span class="fu">rm</span> -rf _site</a>
+<a class="sourceLine" id="cb10-13" data-line-number="13"><span class="fu">mv</span> /tmp/_site . </a>
+<a class="sourceLine" id="cb10-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb10-15" data-line-number="15"><span class="co"># Other paths should not diverge from master</span></a>
+<a class="sourceLine" id="cb10-16" data-line-number="16"><span class="fu">git</span> checkout master -- .circleci/config.yml .gitignore nginx api </a>
+<a class="sourceLine" id="cb10-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb10-18" data-line-number="18"><span class="co"># Only push to server if something did change</span></a>
+<a class="sourceLine" id="cb10-19" data-line-number="19"><span class="kw">if [[</span> <span class="kw">`</span><span class="fu">git</span> status --porcelain<span class="kw">` ]]</span>; <span class="kw">then</span></a>
+<a class="sourceLine" id="cb10-20" data-line-number="20">  <span class="fu">git</span> config --global user.email job@circleci.com</a>
+<a class="sourceLine" id="cb10-21" data-line-number="21">  <span class="fu">git</span> config --global user.name CircleCI</a>
+<a class="sourceLine" id="cb10-22" data-line-number="22">  <span class="fu">git</span> add .</a>
+<a class="sourceLine" id="cb10-23" data-line-number="23">  <span class="fu">git</span> commit -m <span class="st">&quot;deploy #</span><span class="va">$CIRCLE_BUILD_NUM</span><span class="st">&quot;</span></a>
+<a class="sourceLine" id="cb10-24" data-line-number="24">  <span class="fu">git</span> push origin server</a>
+<a class="sourceLine" id="cb10-25" data-line-number="25"><span class="kw">else</span></a>
+<a class="sourceLine" id="cb10-26" data-line-number="26">  <span class="bu">echo</span> <span class="st">&quot;No changes to deploy. Bye!&quot;</span></a>
+<a class="sourceLine" id="cb10-27" data-line-number="27"><span class="kw">fi</span></a></code></pre></div>
+<p>And that is all! Here’s the recap of the whole deploy process:</p>
+<ol type="1">
+<li>CircleCI runs tests and builds the site.</li>
+<li>If new pages have to be deployed, they are pushed to GitHub.</li>
+<li>Github sends a POST request to the Scotty server after the repo is updated.</li>
+<li>The server pulls the latest code from the <code>server</code> branch and Ngninx automatically servers the updated pages.</li>
+</ol>
+<p>That’s all I can say about my blog. I think it was pretty fun to do it. Some parts are a bit too convoluted and/or over-engineered for such a small site, but I did it because I don’t really get to play with these tools on my day job. Hope you enjoyed reading this. See you around!</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>

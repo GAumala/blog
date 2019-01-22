@@ -18,10 +18,8 @@ jobs:
           working_directory: './api'
           command: |
             stack setup
-            # this is pretty big so disable optimizations and limit
-            # to one job to avoid running out of memory
-            stack build -j1 --fast --dependencies-only
-            stack test
+            # Limit to one job to avoid running out of memory
+            stack build -j1 --dependencies-only
       - run:
           name: Resolve/Update Static Site Dependencies
           working_directory: './static'
@@ -49,9 +47,7 @@ jobs:
       - run:
           name: Build & Test API App
           working_directory: './api'
-          command: |
-            stack build 
-            stack test
+          command: stack test
       - run:
           name: Build Static Site Generator
           working_directory: './static'
