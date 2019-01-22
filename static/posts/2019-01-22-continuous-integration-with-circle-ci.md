@@ -47,7 +47,7 @@ to build the blog in a CircleCI job. It's not a common combination so there is n
  pre-built image that I can use. The good thing is that I can create my own. 
 
 I need an image with multiple tools so I should pick a Linux distro that can make
-it easy to install them. I have use Arch Linux on all my personal computers for 
+it easy to install them. I have used Arch Linux on all my personal computers for 
 years. I think it's a great minimalistic distro so I went with that and installed 
 all dependencies via Pacman. This way I can build the blog in the cloud with same 
 environment of my development machine.
@@ -191,8 +191,8 @@ The steps can be summarized like this:
 2. Restore the cache. 
 3. Run steps that generate things that should be cached. In this case the steps
    are:
-    - Compile the static site generator.
-    - Compile the Scotty server.
+    - Download & compile the static site generator's dependencies.
+    - Download & compile the Scotty server's dependencies.
     - Pull npm dependencies used in the frontend.
 4. Store outputs in the cache. I just have to specify the paths that should be
    saved and on the next build they will be added to the container when
