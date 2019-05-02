@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Android,Java,MVI,AutoValue,architecture,design pattern,library">
+    <meta name="description" content="Writing maintainable android apps with the Model-View-Intent design pattern" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Writing maintainable android apps with the Model-View-Intent design pattern">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Implementing MVI in Android">
+    <meta property="og:description" content="Writing maintainable android apps with the Model-View-Intent design pattern">
+    <title>Implementing MVI in Android</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/siegvriel" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Implementing MVI in Android</h1>
+    <div class="date"><span>April 30, 2019</span></div>
+    <article>
+      <section>
+        <p>Android development should be easy. Most apps that I’ve worked in aren’t that complex, they usually boil down to just displaying some data from a remote server and then letting the user post new data to that server. Nevertheless, their codebases often ended up being ugly and convoluted. After all these years I think I have finally figured out how to avoid common pitfalls.</p>
+<!--more-->
+<p>I think that the main reason why messy codebases are so common is that Android developers were left on their own when it came to app architecture. Google didn’t care about it until <a href="https://www.youtube.com/watch?v=FrteWKKVyzI">Google I/O 2017, when they announced architecture components</a>. Even today, almost all Android guides from Google show examples that directly dump all code into activities of fragments, leading to chaos as the app grows. I understand that they do this for the sake of brevity, but since developers (myself included) tend to copy &amp; paste snippets from these guides, it ends up being problematic.</p>
+<p>I was very excited after the architecture components announcement. I think it’s really cool that finally Google decided to give developers tools to address the elephant in the room. In particular, I believe <code>ViewModel</code> and <code>LiveData</code> could be great building blocks for a solid architecture. I’m a big fan of <a href="https://guide.elm-lang.org/architecture/">The Elm Architecture</a>, among other functional languages, so I tried figure to how to use architecture components to bring some of these great ideas found in Elm and the likes into my Android apps.</p>
+<p>Among all the popular design patterns found in the Android community, <a href="http://hannesdorfmann.com/android/model-view-intent">Model-View-Intent (MVI)</a> seemed like the closest one to what I wanted. I decided to implement it with architecture components in some of my apps and after some trial and error, extracted the useful classes into <a href="https://github.com/GAumala/mvi-android">this library</a> to make it easier to implement the pattern effectively in new apps.</p>
+<p>I am very pleased with the results so in this post I want to explain why MVI is so effective, and how I use this library in my apps. For this matter I’ll provide an example app, a tiny Reddit client in which you enter the name of a subreddit and load the current top posts.</p>
+<p><img src="../assets/images/mvi_app_1.jpg" /></p>
+<p><img src="../assets/images/mvi_app_2.jpg" /></p>
+<p>You can find the entire source code in the <a href="https://github.com/GAumala/mvi-android">library’s repository</a>. Feel free to checkout the code and run it in your own devices. In the following sections I’m going to break down the important parts and show how I use the library to implement the pattern.</p>
+<h3 id="the-state">The State</h3>
+<p>The most important thing in this application is to manage state and keep the UI synchronized with it. What would the state for this app look like? If I were to draw it as <a href="https://en.wikipedia.org/wiki/Finite-state_machine">finite state machine</a> diagram, it would have the following nodes:</p>
+<ul>
+<li><strong>Input state</strong>. Initially, there should be a form for the user to input the name of a subreddit to load the posts.</li>
+<li><strong>Loading state</strong>. After submitting a valid subreddit name, the app should show a spinner while loading the posts from the network.</li>
+<li><strong>Posts ready state</strong>. If posts are loaded successfully, they should be displayed with the option to click and open the links in a browser.</li>
+<li><strong>Error state</strong> If a network error occurs while loading posts, an error message must be displayed.</li>
+</ul>
+<p>Now let’s define a class that models this state. State classes should just be immutable data. You should be able to derive <code>equals()</code>, <code>toString()</code>, and even implement <code>Parcelable</code> with little or no effort. If you are using Java I recommend using <a href="https://github.com/google/auto/blob/master/value/userguide/index.md">AutoValue</a> for this matter. If you are using Kotlin, <a href="https://kotlinlang.org/docs/reference/data-classes.html">data classes</a> are all you need.</p>
+<p>Here’s the state for our Reddit client:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> RedditState {</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">    <span class="co">// Display a form so that the user can submit a </span></a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">    <span class="co">// subreddit name to load posts. </span></a>
+<a class="sourceLine" id="cb1-5" data-line-number="5">    <span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb1-6" data-line-number="6">    <span class="kw">public</span> <span class="dt">static</span> <span class="kw">abstract</span> <span class="kw">class</span> Input <span class="kw">extends</span> RedditState {</a>
+<a class="sourceLine" id="cb1-7" data-line-number="7">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="at">@StringRes</span></a>
+<a class="sourceLine" id="cb1-8" data-line-number="8">        <span class="dt">int</span> <span class="fu">errorResId</span>();</a>
+<a class="sourceLine" id="cb1-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb1-10" data-line-number="10">        <span class="kw">public</span> <span class="dt">static</span> Input <span class="fu">create</span>(<span class="dt">int</span> errorResId) {</a>
+<a class="sourceLine" id="cb1-11" data-line-number="11">            <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_RedditState_Input</span>(errorResId);</a>
+<a class="sourceLine" id="cb1-12" data-line-number="12">        }</a>
+<a class="sourceLine" id="cb1-13" data-line-number="13">    }</a>
+<a class="sourceLine" id="cb1-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb1-15" data-line-number="15">    <span class="co">// Posts are loading, better show a spinner in the meantime.</span></a>
+<a class="sourceLine" id="cb1-16" data-line-number="16">    <span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb1-17" data-line-number="17">    <span class="kw">public</span> <span class="dt">static</span> <span class="kw">abstract</span> <span class="kw">class</span> Loading <span class="kw">extends</span> RedditState {</a>
+<a class="sourceLine" id="cb1-18" data-line-number="18">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">String</span> <span class="fu">subredditName</span>();</a>
+<a class="sourceLine" id="cb1-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb1-20" data-line-number="20">        <span class="kw">public</span> <span class="dt">static</span> Loading <span class="fu">create</span>(<span class="bu">String</span> subredditName) {</a>
+<a class="sourceLine" id="cb1-21" data-line-number="21">            <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_RedditState_Loading</span>(subredditName);</a>
+<a class="sourceLine" id="cb1-22" data-line-number="22">        }</a>
+<a class="sourceLine" id="cb1-23" data-line-number="23">    }</a>
+<a class="sourceLine" id="cb1-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb1-25" data-line-number="25">    <span class="co">// Posts are ready to be displayed.</span></a>
+<a class="sourceLine" id="cb1-26" data-line-number="26">    <span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb1-27" data-line-number="27">    <span class="kw">public</span> <span class="dt">static</span> <span class="kw">abstract</span> <span class="kw">class</span> Ready <span class="kw">extends</span> RedditState {</a>
+<a class="sourceLine" id="cb1-28" data-line-number="28">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">String</span> <span class="fu">subredditName</span>();</a>
+<a class="sourceLine" id="cb1-29" data-line-number="29"></a>
+<a class="sourceLine" id="cb1-30" data-line-number="30">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">List</span>&lt;Post&gt; <span class="fu">posts</span>();</a>
+<a class="sourceLine" id="cb1-31" data-line-number="31"></a>
+<a class="sourceLine" id="cb1-32" data-line-number="32">        <span class="kw">public</span> <span class="dt">static</span> Ready <span class="fu">create</span>(<span class="bu">String</span> subredditName, <span class="bu">List</span>&lt;Post&gt; posts) {</a>
+<a class="sourceLine" id="cb1-33" data-line-number="33">            <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_RedditState_Ready</span>(subredditName, posts);</a>
+<a class="sourceLine" id="cb1-34" data-line-number="34">        }</a>
+<a class="sourceLine" id="cb1-35" data-line-number="35">    }</a>
+<a class="sourceLine" id="cb1-36" data-line-number="36"></a>
+<a class="sourceLine" id="cb1-37" data-line-number="37"></a>
+<a class="sourceLine" id="cb1-38" data-line-number="38">    <span class="co">// Something went wrong loading the posts. </span></a>
+<a class="sourceLine" id="cb1-39" data-line-number="39">    <span class="co">//Show an error message</span></a>
+<a class="sourceLine" id="cb1-40" data-line-number="40">    <span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb1-41" data-line-number="41">    <span class="kw">public</span> <span class="dt">static</span> <span class="kw">abstract</span> <span class="kw">class</span> <span class="bu">Error</span> <span class="kw">extends</span> RedditState {</a>
+<a class="sourceLine" id="cb1-42" data-line-number="42">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">String</span> <span class="fu">message</span>();</a>
+<a class="sourceLine" id="cb1-43" data-line-number="43"></a>
+<a class="sourceLine" id="cb1-44" data-line-number="44">        <span class="kw">public</span> <span class="dt">static</span> <span class="bu">Error</span> <span class="fu">create</span>(<span class="bu">String</span> message) {</a>
+<a class="sourceLine" id="cb1-45" data-line-number="45">            <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_RedditState_Error</span>(message);</a>
+<a class="sourceLine" id="cb1-46" data-line-number="46">        }</a>
+<a class="sourceLine" id="cb1-47" data-line-number="47">    }</a>
+<a class="sourceLine" id="cb1-48" data-line-number="48"></a>
+<a class="sourceLine" id="cb1-49" data-line-number="49">    <span class="kw">public</span> <span class="dt">static</span> RedditState <span class="fu">createInitialState</span>() {</a>
+<a class="sourceLine" id="cb1-50" data-line-number="50">        <span class="kw">return</span> Input.<span class="fu">create</span>(-<span class="dv">1</span>);</a>
+<a class="sourceLine" id="cb1-51" data-line-number="51">    }</a>
+<a class="sourceLine" id="cb1-52" data-line-number="52">}</a></code></pre></div>
+<p>As you can see, every possible state is modeled as a <code>RedditState</code> subclass using <code>AutoValue</code>. It is similar to Kotlin’s sealed classes. The disadvantage here is that Java lacks pattern matching for types, so it requires some unsafe casts. It’s still good enough for me because it helps me avoid null references.</p>
+<h3 id="side-effects">Side Effects</h3>
+<p>Now that the state is ready we have to define the side effects. Ideally all of our code should have pure functions. These special functions are preferred because they always return the same values if provided with the same parameters. If all of our functions were so predictable, then fixing bugs is very easy and straight forward. Just run the function again with those same parameters on any environment and locate the line where it went wrong. Unfortunately, an app like that isn’t very useful. Non determinism is unavoidable and even desired in a few parts of almost every app. A few examples of this are:</p>
+<ul>
+<li>Random number generation</li>
+<li>Using a file system</li>
+<li>Sending &amp; Receiving data over a network</li>
+</ul>
+<p>In order to be able to trigger non-deterministic computations in pure functions, these functions will return side-effect values. These values will be passed to another object, a <code>SideEffectRunner</code>, which will read the data and figure out how to execute the desired side-effect and post the result.</p>
+<p>The only side effect that we want in this Reddit client, is the ability to fetch a subreddit’s top posts from Reddit’s servers. This is non-deterministic because the top posts change over time, and the request can fail due to a network error.</p>
+<p>Here’s the definition of the <code>RedditSideEffect</code> class:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> RedditSideEffect {</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">    <span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">    <span class="kw">public</span> <span class="dt">static</span> <span class="kw">abstract</span> <span class="kw">class</span> FetchPosts <span class="kw">extends</span> RedditSideEffect {</a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">        <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">String</span> <span class="fu">subredditName</span>();</a>
+<a class="sourceLine" id="cb2-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">        <span class="kw">public</span> <span class="dt">static</span> FetchPosts <span class="fu">create</span>(<span class="bu">String</span> subredditName) {</a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">            <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_RedditSideEffect_FetchPosts</span>(subredditName);</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8">        }</a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">    }</a>
+<a class="sourceLine" id="cb2-10" data-line-number="10">}</a></code></pre></div>
+<p>The <code>FetchPosts</code> class has only one attribute: the subreddit name. This is because these classes are plain values with the minimum necessary data for the <code>SideEffectRunner</code> to execute it. <code>FetchPosts</code> is a subclass of <code>RedditSideEffect</code> because different side-effects need different kinds of data. In a full-featured Reddit client there should be more side-effects, like the ability to submit new posts, or upvote/downvote existing ones. Each of them would need different data, so they would be modeled with different subclasses of <code>RedditSideEffect</code>.</p>
+<p>While <code>FetchPosts</code> contains the parameters to run the side effect. The class that actually executes it is <code>RedditSideEffectRunner</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.ActionSink;</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="kw">import</span><span class="im"> com.gaumala.mvi.SideEffectRunner;</span></a>
+<a class="sourceLine" id="cb3-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb3-4" data-line-number="4"><span class="kw">public</span> <span class="kw">class</span> RedditSideEffectRunner</a>
+<a class="sourceLine" id="cb3-5" data-line-number="5">        <span class="kw">implements</span> SideEffectRunner&lt;RedditState, RedditSideEffect&gt; {</a>
+<a class="sourceLine" id="cb3-6" data-line-number="6">    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">Resources</span> resources;</a>
+<a class="sourceLine" id="cb3-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb3-8" data-line-number="8">    <span class="kw">public</span> <span class="fu">RedditSideEffectRunner</span>(<span class="bu">Resources</span> resources) {</a>
+<a class="sourceLine" id="cb3-9" data-line-number="9">        <span class="kw">this</span>.<span class="fu">resources</span> = resources;</a>
+<a class="sourceLine" id="cb3-10" data-line-number="10">    }</a>
+<a class="sourceLine" id="cb3-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb3-12" data-line-number="12">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb3-13" data-line-number="13">    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">runSideEffect</span>(ActionSink&lt;RedditState, RedditSideEffect&gt; sink,</a>
+<a class="sourceLine" id="cb3-14" data-line-number="14">                              RedditSideEffect sideEffect) {</a>
+<a class="sourceLine" id="cb3-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb3-16" data-line-number="16">        <span class="kw">if</span> (sideEffect <span class="kw">instanceof</span> RedditSideEffect.<span class="fu">FetchPosts</span>)</a>
+<a class="sourceLine" id="cb3-17" data-line-number="17">            <span class="fu">fetchPosts</span>(sink, (RedditSideEffect.<span class="fu">FetchPosts</span>) sideEffect);</a>
+<a class="sourceLine" id="cb3-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb3-19" data-line-number="19">    }</a>
+<a class="sourceLine" id="cb3-20" data-line-number="20"></a>
+<a class="sourceLine" id="cb3-21" data-line-number="21">    <span class="kw">private</span> <span class="dt">void</span> <span class="fu">fetchPosts</span>(ActionSink&lt;RedditState, RedditSideEffect&gt; sink,</a>
+<a class="sourceLine" id="cb3-22" data-line-number="22">                            RedditSideEffect.<span class="fu">FetchPosts</span> sideEffect) {</a>
+<a class="sourceLine" id="cb3-23" data-line-number="23"></a>
+<a class="sourceLine" id="cb3-24" data-line-number="24">        FetchPostsTask.<span class="fu">run</span>(</a>
+<a class="sourceLine" id="cb3-25" data-line-number="25">              resources,</a>
+<a class="sourceLine" id="cb3-26" data-line-number="26">              sideEffect.<span class="fu">subredditName</span>(),</a>
+<a class="sourceLine" id="cb3-27" data-line-number="27">              res -&gt; sink.<span class="fu">submitAction</span>(FetchPosts.<span class="fu">create</span>(res)));</a>
+<a class="sourceLine" id="cb3-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb3-29" data-line-number="29">    }</a>
+<a class="sourceLine" id="cb3-30" data-line-number="30">}</a></code></pre></div>
+<p>This class has a public method <code>runSideEffect()</code>, which takes an <code>ActionSink</code> object and an <code>RedditSideEffect</code> value. It identifies the <code>RedditSideEffect.FetchPosts</code> value and runs the desired effect using <code>FetchPostsTask</code>, a class executes the HTTP request in a background thread and invokes a callback lambda once the work is complete.</p>
+<p>The <code>ActionSink</code> object is used to update the state with the result of the side effect. This interface exposes a single method: <code>submitAction()</code>. As implied by the name it receives “actions”, or intents to do something stateful, which I’ll describe in the next section.</p>
+<h3 id="actions">Actions</h3>
+<p>Actions are values that can update the state. They have a <code>update()</code> method that takes the current state, and returns a new one, because the state is an immutable value. Optionally, this method can also return a side effect to be executed immediately. This method assumed to be a pure function, it can’t perform I/O or mess with global variables to calculate the new state . It can only take into account the action’s data and the current state. Here’s the definition of the <code>FetchPosts</code> action mentioned on the previous section:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Action;</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Update;</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4"><span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5"><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> FetchPosts </a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">  <span class="kw">extends</span> <span class="bu">Action</span>&lt;RedditState, RedditSideEffect&gt; {</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">    <span class="kw">public</span> <span class="kw">abstract</span> FetchPostsRes <span class="fu">res</span>();</a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">    <span class="at">@NonNull</span></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb4-12" data-line-number="12">    <span class="kw">public</span> Update&lt;RedditState, RedditSideEffect&gt; <span class="fu">update</span>(</a>
+<a class="sourceLine" id="cb4-13" data-line-number="13">        RedditState currentState) {</a>
+<a class="sourceLine" id="cb4-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb4-15" data-line-number="15">        <span class="kw">if</span> (!(currentState <span class="kw">instanceof</span> RedditState.<span class="fu">Loading</span>))</a>
+<a class="sourceLine" id="cb4-16" data-line-number="16">            <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(currentState);</a>
+<a class="sourceLine" id="cb4-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb4-18" data-line-number="18">        RedditState.<span class="fu">Loading</span> state = (RedditState.<span class="fu">Loading</span>) currentState;</a>
+<a class="sourceLine" id="cb4-19" data-line-number="19">        FetchPostsRes res = <span class="fu">res</span>();</a>
+<a class="sourceLine" id="cb4-20" data-line-number="20">        <span class="kw">if</span> (res <span class="kw">instanceof</span> FetchPostsRes.<span class="fu">Success</span>)</a>
+<a class="sourceLine" id="cb4-21" data-line-number="21">            <span class="kw">return</span> <span class="fu">updateWithSuccess</span>(state, (FetchPostsRes.<span class="fu">Success</span>) res);</a>
+<a class="sourceLine" id="cb4-22" data-line-number="22"></a>
+<a class="sourceLine" id="cb4-23" data-line-number="23">        <span class="kw">return</span> <span class="fu">updateWithError</span>((FetchPostsRes.<span class="fu">Error</span>) res);</a>
+<a class="sourceLine" id="cb4-24" data-line-number="24">    }</a>
+<a class="sourceLine" id="cb4-25" data-line-number="25"></a>
+<a class="sourceLine" id="cb4-26" data-line-number="26">    <span class="kw">private</span> Update&lt;RedditState, RedditSideEffect&gt; <span class="fu">updateWithError</span>(</a>
+<a class="sourceLine" id="cb4-27" data-line-number="27">            FetchPostsRes.<span class="fu">Error</span> res) {</a>
+<a class="sourceLine" id="cb4-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb4-29" data-line-number="29">        RedditState newState = RedditState.<span class="fu">Error</span>.<span class="fu">create</span>(res.<span class="fu">message</span>());</a>
+<a class="sourceLine" id="cb4-30" data-line-number="30">        <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(newState);</a>
+<a class="sourceLine" id="cb4-31" data-line-number="31">    }</a>
+<a class="sourceLine" id="cb4-32" data-line-number="32"></a>
+<a class="sourceLine" id="cb4-33" data-line-number="33">    <span class="kw">private</span> Update&lt;RedditState, RedditSideEffect&gt; <span class="fu">updateWithSuccess</span>(</a>
+<a class="sourceLine" id="cb4-34" data-line-number="34">            RedditState.<span class="fu">Loading</span> state,</a>
+<a class="sourceLine" id="cb4-35" data-line-number="35">            FetchPostsRes.<span class="fu">Success</span> res) {</a>
+<a class="sourceLine" id="cb4-36" data-line-number="36"></a>
+<a class="sourceLine" id="cb4-37" data-line-number="37">        RedditState newState = RedditState.<span class="fu">Ready</span>.<span class="fu">create</span>(</a>
+<a class="sourceLine" id="cb4-38" data-line-number="38">                state.<span class="fu">subredditName</span>(),</a>
+<a class="sourceLine" id="cb4-39" data-line-number="39">                res.<span class="fu">posts</span>());</a>
+<a class="sourceLine" id="cb4-40" data-line-number="40">        <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(newState);</a>
+<a class="sourceLine" id="cb4-41" data-line-number="41">    }</a>
+<a class="sourceLine" id="cb4-42" data-line-number="42"></a>
+<a class="sourceLine" id="cb4-43" data-line-number="43">    <span class="kw">public</span> <span class="dt">static</span> FetchPosts <span class="fu">create</span>(FetchPostsRes res) {</a>
+<a class="sourceLine" id="cb4-44" data-line-number="44">        <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_FetchPosts</span>(res);</a>
+<a class="sourceLine" id="cb4-45" data-line-number="45">    }</a>
+<a class="sourceLine" id="cb4-46" data-line-number="46">}</a></code></pre></div>
+<p>This action takes as constructor parameter the result of <code>FetchPostsTask</code>: <code>FetchPostsRes</code>, which can either be <code>Success</code> or <code>Error</code>, and returns a new state of type <code>Ready</code> or <code>Error</code> respectively. This action handles the server’s response, but what about the action that triggers the side effect that sends the request? It is this one, <code>CallFetchPosts</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Action;</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Update;</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb5-4" data-line-number="4"><span class="at">@AutoValue</span></a>
+<a class="sourceLine" id="cb5-5" data-line-number="5"><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> CallFetchPosts</a>
+<a class="sourceLine" id="cb5-6" data-line-number="6">        <span class="kw">extends</span> <span class="bu">Action</span>&lt;RedditState, RedditSideEffect&gt; {</a>
+<a class="sourceLine" id="cb5-7" data-line-number="7">    <span class="kw">public</span> <span class="kw">abstract</span> <span class="bu">String</span> <span class="fu">subredditName</span>();</a>
+<a class="sourceLine" id="cb5-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb5-9" data-line-number="9">    <span class="at">@NonNull</span></a>
+<a class="sourceLine" id="cb5-10" data-line-number="10">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb5-11" data-line-number="11">    <span class="kw">public</span> Update&lt;RedditState, RedditSideEffect&gt; <span class="fu">update</span>(RedditState state) {</a>
+<a class="sourceLine" id="cb5-12" data-line-number="12"></a>
+<a class="sourceLine" id="cb5-13" data-line-number="13">        <span class="kw">if</span> (!(state <span class="kw">instanceof</span> RedditState.<span class="fu">Input</span>))</a>
+<a class="sourceLine" id="cb5-14" data-line-number="14">            <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(state);</a>
+<a class="sourceLine" id="cb5-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb5-16" data-line-number="16">        <span class="kw">if</span> (<span class="fu">subredditName</span>().<span class="fu">isEmpty</span>()) {</a>
+<a class="sourceLine" id="cb5-17" data-line-number="17">            RedditState newState = RedditState.<span class="fu">Input</span>.<span class="fu">create</span>(</a>
+<a class="sourceLine" id="cb5-18" data-line-number="18">                    R.<span class="fu">string</span>.<span class="fu">empty_string_error</span>);</a>
+<a class="sourceLine" id="cb5-19" data-line-number="19">            <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(newState);</a>
+<a class="sourceLine" id="cb5-20" data-line-number="20">        }</a>
+<a class="sourceLine" id="cb5-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb5-22" data-line-number="22">        RedditState newState = RedditState.<span class="fu">Loading</span>.<span class="fu">create</span>(<span class="fu">subredditName</span>());</a>
+<a class="sourceLine" id="cb5-23" data-line-number="23">        RedditSideEffect sideEffect =</a>
+<a class="sourceLine" id="cb5-24" data-line-number="24">                RedditSideEffect.<span class="fu">FetchPosts</span>.<span class="fu">create</span>(<span class="fu">subredditName</span>());</a>
+<a class="sourceLine" id="cb5-25" data-line-number="25">        <span class="kw">return</span> <span class="kw">new</span> Update&lt;&gt;(newState, sideEffect);</a>
+<a class="sourceLine" id="cb5-26" data-line-number="26">    }</a>
+<a class="sourceLine" id="cb5-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb5-28" data-line-number="28">    <span class="kw">public</span> <span class="dt">static</span> CallFetchPosts <span class="fu">create</span>(<span class="bu">String</span> subredditName) {</a>
+<a class="sourceLine" id="cb5-29" data-line-number="29">        <span class="kw">return</span> <span class="kw">new</span> <span class="fu">AutoValue_CallFetchPosts</span>(subredditName);</a>
+<a class="sourceLine" id="cb5-30" data-line-number="30">    }</a>
+<a class="sourceLine" id="cb5-31" data-line-number="31">}</a></code></pre></div>
+<p>This action takes the subreddit name that the user entered, validates that it is not empty and then returns a new <code>Loading</code> state along with a side effect. This returned side effect is then passed to <code>RedditSideEffectRunner</code> so that it can execute <code>FetchPostsTask</code> and finally submit a <code>FetchPosts</code> action to <code>ActionSink</code> with the result.</p>
+<h3 id="views">Views</h3>
+<p>Every time an action updates the state the views should readjust themselves to let the user visualize the new state. To do this, the application’s views should be managed by a “UI” object that extends <code>BaseUI&lt;T&gt;</code>. This abstract class has a <code>rebind()</code> method that has a single parameter: the current state. This method is called after every <code>update()</code> so that the views always stay in sync with the state.</p>
+<p>Before showing the implementation of <code>rebind()</code> for the Reddit client, let’s talk about the layout and what views are used. Here’s the XML:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode xml"><code class="sourceCode xml"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">&lt;?xml</span> version=&quot;1.0&quot; encoding=&quot;utf-8&quot;<span class="kw">?&gt;</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2"><span class="kw">&lt;FrameLayout</span><span class="ot"> xmlns:android=</span><span class="st">&quot;http://schemas.android.com/apk/res/android&quot;</span></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3"><span class="ot">    android:layout_width=</span><span class="st">&quot;match_parent&quot;</span></a>
+<a class="sourceLine" id="cb6-4" data-line-number="4"><span class="ot">    android:layout_height=</span><span class="st">&quot;match_parent&quot;</span></a>
+<a class="sourceLine" id="cb6-5" data-line-number="5"><span class="ot">    xmlns:app=</span><span class="st">&quot;http://schemas.android.com/apk/res-auto&quot;</span><span class="kw">&gt;</span></a>
+<a class="sourceLine" id="cb6-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb6-7" data-line-number="7">    <span class="kw">&lt;androidx.appcompat.widget.Toolbar</span></a>
+<a class="sourceLine" id="cb6-8" data-line-number="8"><span class="ot">        android:id=</span><span class="st">&quot;@+id/toolbar&quot;</span></a>
+<a class="sourceLine" id="cb6-9" data-line-number="9"><span class="ot">        android:layout_width=</span><span class="st">&quot;match_parent&quot;</span></a>
+<a class="sourceLine" id="cb6-10" data-line-number="10"><span class="ot">        android:layout_height=</span><span class="st">&quot;?attr/actionBarSize&quot;</span></a>
+<a class="sourceLine" id="cb6-11" data-line-number="11"><span class="ot">        android:elevation=</span><span class="st">&quot;4dp&quot;</span></a>
+<a class="sourceLine" id="cb6-12" data-line-number="12"><span class="ot">        app:title=</span><span class="st">&quot;@string/reddit&quot;</span></a>
+<a class="sourceLine" id="cb6-13" data-line-number="13"><span class="ot">        app:theme=</span><span class="st">&quot;@style/ThemeOverlay.AppCompat.Dark.ActionBar&quot;</span> <span class="kw">/&gt;</span></a>
+<a class="sourceLine" id="cb6-14" data-line-number="14"></a>
+<a class="sourceLine" id="cb6-15" data-line-number="15">    <span class="kw">&lt;include</span><span class="ot"> layout=</span><span class="st">&quot;@layout/subreddit_form_view&quot;</span></a>
+<a class="sourceLine" id="cb6-16" data-line-number="16"><span class="ot">        android:layout_marginTop=</span><span class="st">&quot;?attr/actionBarSize&quot;</span></a>
+<a class="sourceLine" id="cb6-17" data-line-number="17"><span class="ot">        android:layout_width=</span><span class="st">&quot;match_parent&quot;</span></a>
+<a class="sourceLine" id="cb6-18" data-line-number="18"><span class="ot">        android:layout_height=</span><span class="st">&quot;match_parent&quot;</span> <span class="kw">/&gt;</span></a>
+<a class="sourceLine" id="cb6-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb6-20" data-line-number="20">    <span class="kw">&lt;androidx.recyclerview.widget.RecyclerView</span></a>
+<a class="sourceLine" id="cb6-21" data-line-number="21"><span class="ot">        app:layoutManager=</span><span class="st">&quot;androidx.recyclerview.widget.LinearLayoutManager&quot;</span></a>
+<a class="sourceLine" id="cb6-22" data-line-number="22"><span class="ot">        android:id=</span><span class="st">&quot;@+id/posts_recycler&quot;</span></a>
+<a class="sourceLine" id="cb6-23" data-line-number="23"><span class="ot">        android:layout_marginTop=</span><span class="st">&quot;?attr/actionBarSize&quot;</span></a>
+<a class="sourceLine" id="cb6-24" data-line-number="24"><span class="ot">        android:visibility=</span><span class="st">&quot;gone&quot;</span></a>
+<a class="sourceLine" id="cb6-25" data-line-number="25"><span class="ot">        android:layout_width=</span><span class="st">&quot;match_parent&quot;</span></a>
+<a class="sourceLine" id="cb6-26" data-line-number="26"><span class="ot">        android:layout_height=</span><span class="st">&quot;match_parent&quot;</span><span class="kw">/&gt;</span></a>
+<a class="sourceLine" id="cb6-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb6-28" data-line-number="28"><span class="kw">&lt;/FrameLayout&gt;</span></a></code></pre></div>
+<p>This layout has 3 main elements:</p>
+<ul>
+<li>Toolbar</li>
+<li>RecyclerView</li>
+<li>Input form (Nested layout with the form for the subreddit name).</li>
+</ul>
+<p>The idea is to switch between the form and the <code>RecyclerView</code> depending on the state. If the state is instance of <code>Input</code>, the form should be visible while the <code>RecyclerView</code> is hidden. For any other states, the <code>RecyclerView</code> is shown instead because progress bars, error messages and posts can be shown inside it. With that being said, here’s a snippet of <code>RedditGUI</code> containing the <code>rebind()</code> implementation:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.ActionSink;</span></a>
+<a class="sourceLine" id="cb7-2" data-line-number="2"><span class="kw">import</span><span class="im"> com.gaumala.mvi.BaseUI;</span></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb7-4" data-line-number="4"><span class="kw">class</span> RedditGUI <span class="kw">extends</span> BaseUI&lt;RedditState&gt; {</a>
+<a class="sourceLine" id="cb7-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6">    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">Context</span> ctx;</a>
+<a class="sourceLine" id="cb7-7" data-line-number="7">    <span class="kw">private</span> <span class="dt">final</span> ActionSink&lt;RedditState, RedditSideEffect&gt; sink;</a>
+<a class="sourceLine" id="cb7-8" data-line-number="8">    <span class="kw">private</span> <span class="dt">final</span> ActionBar actionBar;</a>
+<a class="sourceLine" id="cb7-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb7-10" data-line-number="10">    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">View</span> inputForm;</a>
+<a class="sourceLine" id="cb7-11" data-line-number="11">    <span class="kw">private</span> <span class="dt">final</span> TextInputLayout subredditInputLayout;</a>
+<a class="sourceLine" id="cb7-12" data-line-number="12">    <span class="kw">private</span> <span class="dt">final</span> <span class="bu">View</span> submitButton;</a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">    <span class="kw">private</span> <span class="dt">final</span> GroupAdapter postsAdapter;</a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">    <span class="kw">private</span> <span class="dt">final</span> RecyclerView postsRecycler;</a>
+<a class="sourceLine" id="cb7-15" data-line-number="15">    <span class="kw">private</span> <span class="dt">final</span> Toolbar toolbar;</a>
+<a class="sourceLine" id="cb7-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb7-17" data-line-number="17">    <span class="fu">RedditGUI</span>(<span class="at">@NonNull</span> LifecycleOwner owner,</a>
+<a class="sourceLine" id="cb7-18" data-line-number="18">              <span class="at">@NonNull</span> LiveData&lt;RedditState&gt; liveState,</a>
+<a class="sourceLine" id="cb7-19" data-line-number="19">              ActionSink&lt;RedditState, RedditSideEffect&gt; sink,</a>
+<a class="sourceLine" id="cb7-20" data-line-number="20">              <span class="bu">View</span> view,</a>
+<a class="sourceLine" id="cb7-21" data-line-number="21">              ActionBar actionBar) {</a>
+<a class="sourceLine" id="cb7-22" data-line-number="22">        <span class="kw">super</span>(owner, liveState);</a>
+<a class="sourceLine" id="cb7-23" data-line-number="23"></a>
+<a class="sourceLine" id="cb7-24" data-line-number="24">        <span class="kw">this</span>.<span class="fu">ctx</span> = view.<span class="fu">getContext</span>();</a>
+<a class="sourceLine" id="cb7-25" data-line-number="25">        <span class="kw">this</span>.<span class="fu">sink</span> = sink;</a>
+<a class="sourceLine" id="cb7-26" data-line-number="26">        <span class="kw">this</span>.<span class="fu">actionBar</span> = actionBar;</a>
+<a class="sourceLine" id="cb7-27" data-line-number="27">        <span class="kw">this</span>.<span class="fu">postsAdapter</span> = <span class="kw">new</span> <span class="fu">GroupAdapter</span>();</a>
+<a class="sourceLine" id="cb7-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb7-29" data-line-number="29">        inputForm = view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">subreddit_input_form</span>);</a>
+<a class="sourceLine" id="cb7-30" data-line-number="30">        subredditInputLayout = view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">subreddit_input_layout</span>);</a>
+<a class="sourceLine" id="cb7-31" data-line-number="31">        submitButton = view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">submit_button</span>);</a>
+<a class="sourceLine" id="cb7-32" data-line-number="32">        postsRecycler = view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">posts_recycler</span>);</a>
+<a class="sourceLine" id="cb7-33" data-line-number="33">        toolbar = view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">toolbar</span>);</a>
+<a class="sourceLine" id="cb7-34" data-line-number="34"></a>
+<a class="sourceLine" id="cb7-35" data-line-number="35">        <span class="co">// set the adapter and dividers to RecyclerView</span></a>
+<a class="sourceLine" id="cb7-36" data-line-number="36">        <span class="fu">setupRecyclers</span>();</a>
+<a class="sourceLine" id="cb7-37" data-line-number="37">    }</a>
+<a class="sourceLine" id="cb7-38" data-line-number="38"></a>
+<a class="sourceLine" id="cb7-39" data-line-number="39">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb7-40" data-line-number="40">    <span class="kw">public</span> <span class="dt">void</span> <span class="fu">rebind</span>(RedditState state) {</a>
+<a class="sourceLine" id="cb7-41" data-line-number="41">        <span class="kw">if</span> (state <span class="kw">instanceof</span> RedditState.<span class="fu">Input</span>)</a>
+<a class="sourceLine" id="cb7-42" data-line-number="42">            <span class="fu">showInputForm</span>((RedditState.<span class="fu">Input</span>) state);</a>
+<a class="sourceLine" id="cb7-43" data-line-number="43">        <span class="kw">else</span></a>
+<a class="sourceLine" id="cb7-44" data-line-number="44">            <span class="fu">showPostsRecyler</span>(state);</a>
+<a class="sourceLine" id="cb7-45" data-line-number="45"></a>
+<a class="sourceLine" id="cb7-46" data-line-number="46">        <span class="co">// show the subreddit name in the title, or just &quot;Reddit&quot; </span></a>
+<a class="sourceLine" id="cb7-47" data-line-number="47">        <span class="co">// if the user hasn't picked a subreddit yet</span></a>
+<a class="sourceLine" id="cb7-48" data-line-number="48">        toolbar.<span class="fu">setTitle</span>(<span class="fu">getTitle</span>(state));</a>
+<a class="sourceLine" id="cb7-49" data-line-number="49">    }</a></code></pre></div>
+<p>This class holds references to all the views and shows only the appropriate views for the current state every time <code>rebind()</code> is called. The <code>rebind()</code> method makes no assumptions about the state transitions, it simply <em>reacts</em> to the current state calling the necessary methods on every view. You may be inclined to believe that resetting properties on every view after every update might be inefficient, but it really isn’t because android views are smart enough to avoid redrawing things that haven’t actually changed.</p>
+<p>You may notice that it calls a <code>super</code> constructor with two parameters of type <code>LifecycleOwner</code> and <code>LiveData&lt;RedditState&gt;</code> respectively. These two objects are used under the hood to subscribe to changes in the state and call <code>rebind()</code> after every update.</p>
+<p>Adjusting views isn’t <code>RedditGUI</code>’s only responsibility. It also handles UI events like button clicking and window scrolling. Just like with <code>RedditSideEffectRunner</code>, <code>RedditGUI</code> also receives an <code>ActionSink</code> to submit actions and trigger state changes in response to UI events. For example, here’s how the <code>showInputForm()</code> method used in <code>rebind()</code> sets a click listener to the submit button:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">private</span> <span class="dt">void</span> <span class="fu">showInputForm</span>(RedditState.<span class="fu">Input</span> state) {</a>
+<a class="sourceLine" id="cb8-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">    <span class="co">// ...adjust some views</span></a>
+<a class="sourceLine" id="cb8-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb8-5" data-line-number="5">    <span class="co">// handle click event</span></a>
+<a class="sourceLine" id="cb8-6" data-line-number="6">    submitButton.<span class="fu">setOnClickListener</span>(v -&gt; {</a>
+<a class="sourceLine" id="cb8-7" data-line-number="7">        <span class="bu">String</span> inputText = subredditInputLayout</a>
+<a class="sourceLine" id="cb8-8" data-line-number="8">                .<span class="fu">getEditText</span>().<span class="fu">getText</span>().<span class="fu">toString</span>();</a>
+<a class="sourceLine" id="cb8-9" data-line-number="9">        sink.<span class="fu">submitAction</span>(CallFetchPosts.<span class="fu">create</span>(inputText));</a>
+<a class="sourceLine" id="cb8-10" data-line-number="10">    });</a>
+<a class="sourceLine" id="cb8-11" data-line-number="11">}</a></code></pre></div>
+<p>When <code>submitButton</code> is clicked, a <code>CallFetchPosts</code> action is submitted with the text input by the user.</p>
+<h3 id="the-dispatcher">The Dispatcher</h3>
+<p>MVI establishes an unidirectional cycle between three parts: intent -&gt; model -&gt; view. In this app, these parts are represented as follows:</p>
+<ul>
+<li><strong>Intent</strong>: Listening to UI events or side effect results is handled by the <code>ActionSink</code>. Both <code>RedditGUI</code> and <code>RedditSideEffectRunner</code> call this object when they have to deliver actions.</li>
+<li><strong>Model</strong>: Processing data from intents to generate new states is handled by <code>Action</code> classes and their <code>update()</code> method.</li>
+<li><strong>View</strong>: Readjusting the Views in order to reflect the latest state returned by <code>update()</code> is handled by <code>RedditGUI</code> and its <code>rebind()</code> method. As this class also generates intents, it is evident how things come full circle.</li>
+</ul>
+<p>Some people view this pattern as the following function composition: <code>view(model(intent()))</code>. That composition is still present in this app, but it uses class methods instead of plain functions because we are still stuck in Java’s OOP world. It’s roughly something like this: <code>rebind(update(submitAction()))</code>.</p>
+<p>To glue everything together some sort of “observer” is needed. Here the <code>Dispatcher</code> class implements this functionality. As you may have already guessed it dispatches actions, triggering state changes and side effects. It implements <code>ActionSink</code>, the interface that <code>RedditGUI</code> and <code>RedditSideEffectRunner</code> use submit actions. It takes a <code>SideEffectRunner</code> object in its constructor so that it can execute the side effects returned by the received actions. Additionally, it holds the <code>LiveData</code> object with the current state so it manages the state and lets observers like <code>RedditGUI</code> react to state changes.</p>
+<p>Unlike <code>BaseUI</code> or <code>SideEffectRunner</code>, you don’t have to extend this class, you simply create an instance with the appropriate type parameters.</p>
+<p>The dispatcher is kept inside a <code>ViewModel</code> so that the application state can persist configuration changes like screen rotation. There is a <code>DispatcherViewModel</code> class that does exactly that. It is parametrized just like <code>Dispatcher</code>, but since you don’t instantiate view models directly in android, it’s better to extend <code>DispatcherViewModel</code> with the desired type parameters. For example, here’s the view model used for the Reddit client:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.DispatcherViewModel;</span></a>
+<a class="sourceLine" id="cb9-2" data-line-number="2"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Dispatcher;</span></a>
+<a class="sourceLine" id="cb9-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb9-4" data-line-number="4"><span class="kw">public</span> <span class="kw">class</span> RedditViewModel </a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">    <span class="kw">extends</span> DispatcherViewModel&lt;RedditState, RedditSideEffect&gt; {</a>
+<a class="sourceLine" id="cb9-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">    <span class="fu">RedditViewModel</span>(Dispatcher&lt;RedditState, RedditSideEffect&gt; dispatcher) {</a>
+<a class="sourceLine" id="cb9-8" data-line-number="8">        <span class="kw">super</span>(dispatcher);</a>
+<a class="sourceLine" id="cb9-9" data-line-number="9">    }</a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">}</a></code></pre></div>
+<p>This class doesn’t do anything special. It is merely a convenience needed due to the parametrization of the <code>DispatcherViewModel</code> type. Since it extends <code>DispatcherViewModel</code>, it gets the public methods: <code>getLiveState()</code>, and <code>getActionSink()</code> which return objects of type <code>LiveData&lt;RedditState&gt;</code> and <code>ActionSink&lt;RedditState, RedditSideEffect&gt;</code> respectively. These two objects are needed to connect all the classes implemented so far because they are able to read the current state and update it via actions.</p>
+<h3 id="running-the-app">Running the app</h3>
+<p>Now that there’s a view model that persists the dispatcher and application state it’s time to wire up everything and run the app. The first thing to do is to instantiate the view model along with all the dependencies (the initial state, dispatcher and side effects runner). I like do this in implementations of <code>ViewModelProvider.Factory</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb10-1" data-line-number="1"><span class="kw">import</span><span class="im"> com.gaumala.mvi.Dispatcher;</span></a>
+<a class="sourceLine" id="cb10-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb10-3" data-line-number="3"><span class="kw">public</span> <span class="kw">class</span> ViewModelFactory <span class="kw">implements</span> ViewModelProvider.<span class="fu">Factory</span> {</a>
+<a class="sourceLine" id="cb10-4" data-line-number="4">    <span class="kw">private</span> <span class="dt">final</span> Fragment fragment;</a>
+<a class="sourceLine" id="cb10-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb10-6" data-line-number="6">    <span class="kw">public</span> <span class="fu">ViewModelFactory</span>(Fragment fragment) {</a>
+<a class="sourceLine" id="cb10-7" data-line-number="7">        <span class="kw">this</span>.<span class="fu">fragment</span> = fragment;</a>
+<a class="sourceLine" id="cb10-8" data-line-number="8">    }</a>
+<a class="sourceLine" id="cb10-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb10-10" data-line-number="10">    <span class="at">@NonNull</span></a>
+<a class="sourceLine" id="cb10-11" data-line-number="11">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb10-12" data-line-number="12">    <span class="kw">public</span> &lt;T <span class="kw">extends</span> ViewModel&gt; T <span class="fu">create</span>(<span class="at">@NonNull</span> <span class="bu">Class</span>&lt;T&gt; modelClass) {</a>
+<a class="sourceLine" id="cb10-13" data-line-number="13">        <span class="co">// The fragment's arguments could be used here to create </span></a>
+<a class="sourceLine" id="cb10-14" data-line-number="14">        <span class="co">// the initial state</span></a>
+<a class="sourceLine" id="cb10-15" data-line-number="15">        RedditState initialState = RedditState.<span class="fu">createInitialState</span>();</a>
+<a class="sourceLine" id="cb10-16" data-line-number="16"></a>
+<a class="sourceLine" id="cb10-17" data-line-number="17">        RedditSideEffectRunner runner =</a>
+<a class="sourceLine" id="cb10-18" data-line-number="18">                <span class="kw">new</span> <span class="fu">RedditSideEffectRunner</span>(fragment.<span class="fu">getResources</span>());</a>
+<a class="sourceLine" id="cb10-19" data-line-number="19"></a>
+<a class="sourceLine" id="cb10-20" data-line-number="20">        <span class="co">// optionally, startup side effects could be run here</span></a>
+<a class="sourceLine" id="cb10-21" data-line-number="21"></a>
+<a class="sourceLine" id="cb10-22" data-line-number="22">        Dispatcher&lt;RedditState, RedditSideEffect&gt; dispatcher =</a>
+<a class="sourceLine" id="cb10-23" data-line-number="23">                <span class="kw">new</span> Dispatcher&lt;&gt;(runner, initialState);</a>
+<a class="sourceLine" id="cb10-24" data-line-number="24"></a>
+<a class="sourceLine" id="cb10-25" data-line-number="25">        <span class="kw">return</span> (T) <span class="kw">new</span> <span class="fu">RedditViewModel</span>(dispatcher);</a>
+<a class="sourceLine" id="cb10-26" data-line-number="26">    }</a>
+<a class="sourceLine" id="cb10-27" data-line-number="27">}</a></code></pre></div>
+<p>The <code>create()</code> method is guaranteed by the architecture components library to run only once, when the view model has not been yet created. It is not necessary for <code>ViewModelFactory</code> to keep a reference to the fragment, but I do it because it is very often useful. In this case it gives me access to a <code>Resources</code> reference that I use in in <code>RedditSideEffectRunner</code> to create appropriate error messages. Also, The initial state could created with a function that returns a different value depending on the fragment’s argument bundle.</p>
+<p>This view model is instantiated by <code>RedditFragment</code>, the fragment that renders the views for our Reddit client. Here’s how it starts the app:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="kw">public</span> <span class="kw">class</span> RedditFragment <span class="kw">extends</span> Fragment {</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">    <span class="at">@Nullable</span></a>
+<a class="sourceLine" id="cb11-3" data-line-number="3">    <span class="at">@Override</span></a>
+<a class="sourceLine" id="cb11-4" data-line-number="4">    <span class="kw">public</span> <span class="bu">View</span> <span class="fu">onCreateView</span>(<span class="at">@NonNull</span> LayoutInflater inflater,</a>
+<a class="sourceLine" id="cb11-5" data-line-number="5">                             <span class="at">@Nullable</span> ViewGroup container,</a>
+<a class="sourceLine" id="cb11-6" data-line-number="6">                             <span class="at">@Nullable</span> Bundle savedInstanceState) {</a>
+<a class="sourceLine" id="cb11-7" data-line-number="7">        <span class="fu">setHasOptionsMenu</span>(<span class="kw">true</span>);</a>
+<a class="sourceLine" id="cb11-8" data-line-number="8">        RedditViewModel viewModel = ViewModelProviders</a>
+<a class="sourceLine" id="cb11-9" data-line-number="9">                .<span class="fu">of</span>(<span class="kw">this</span>, <span class="kw">new</span> <span class="fu">ViewModelFactory</span>(<span class="kw">this</span>))</a>
+<a class="sourceLine" id="cb11-10" data-line-number="10">                .<span class="fu">get</span>(RedditViewModel.<span class="fu">class</span>);</a>
+<a class="sourceLine" id="cb11-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb11-12" data-line-number="12">        <span class="bu">View</span> view = inflater.<span class="fu">inflate</span>(</a>
+<a class="sourceLine" id="cb11-13" data-line-number="13">                R.<span class="fu">layout</span>.<span class="fu">reddit_fragment</span>, container, <span class="kw">false</span>);</a>
+<a class="sourceLine" id="cb11-14" data-line-number="14">        ActionBar actionBar = <span class="fu">setupActionBar</span>(view.<span class="fu">findViewById</span>(R.<span class="fu">id</span>.<span class="fu">toolbar</span>));</a>
+<a class="sourceLine" id="cb11-15" data-line-number="15"></a>
+<a class="sourceLine" id="cb11-16" data-line-number="16">        gui = <span class="kw">new</span> <span class="fu">RedditGUI</span>(</a>
+<a class="sourceLine" id="cb11-17" data-line-number="17">                <span class="kw">this</span>.<span class="fu">getViewLifecycleOwner</span>(),</a>
+<a class="sourceLine" id="cb11-18" data-line-number="18">                viewModel.<span class="fu">getLiveState</span>(),</a>
+<a class="sourceLine" id="cb11-19" data-line-number="19">                viewModel.<span class="fu">getUserActionSink</span>(),</a>
+<a class="sourceLine" id="cb11-20" data-line-number="20">                view, actionBar);</a>
+<a class="sourceLine" id="cb11-21" data-line-number="21">        gui.<span class="fu">subscribe</span>();</a>
+<a class="sourceLine" id="cb11-22" data-line-number="22"></a>
+<a class="sourceLine" id="cb11-23" data-line-number="23">        <span class="kw">return</span> view;</a>
+<a class="sourceLine" id="cb11-24" data-line-number="24">    }</a>
+<a class="sourceLine" id="cb11-25" data-line-number="25">}</a></code></pre></div>
+<p><code>RedditFragment</code> only implements one lifecycle method: <code>onCreateView()</code> which does the following two things before returning a view:</p>
+<ol type="1">
+<li>Creates the view model if it doesn’t already exist.</li>
+<li>Creates a <code>RedditGUI</code> fetching a few dependencies from the view model so that it can observe state changes and submit actions.</li>
+<li>Calls the <code>RedditGUI.subscribe()</code> method to start observing state changes.</li>
+</ol>
+<p>That’s it! This is all that’s necessary to get the app running. Notice that there is no need to implement <code>onStop()</code> or any other lifecycle method because <code>LiveData</code> object used by <code>RedditGUI</code> automatically unsubscribes from state changes when the fragment stops. Network requests could still be loading while the fragment is stopped or recreated and there won’t be any memory leaks because the side effects runner never keeps a reference to the activity or fragment. More complex apps may need to implement other lifecycle methods, and that’s ok, but most of the time it is not necessary thanks to <code>LiveData</code>.</p>
+<h3 id="testing">Testing</h3>
+<p>I think testing is very important, and a good architecture should make it easy to write tests. Since state and actions are defined as immutable values it is very easy to come up with reproducible test cases. You can quickly verify if a chain of actions ends up with a particular state or if it returns any desired side effects.</p>
+<p>One of the reasons why <code>ActionSink</code> is an interface instead of a concrete class is that this makes it possible to use a different implementation in in testing environments that doesn’t rely on the android framework and exposes additional methods for making assertions about the generated states and side effects.</p>
+<p>Here’s a test that asserts that the app reaches the <code>RedditState.Ready</code> state when the user inputs a valid subreddit and the server request succeeds:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="at">@Test</span></a>
+<a class="sourceLine" id="cb12-2" data-line-number="2"><span class="kw">public</span> <span class="dt">void</span> <span class="fu">should_display_posts_in_absence_of_errors</span>() {</a>
+<a class="sourceLine" id="cb12-3" data-line-number="3">    RedditState initialState = RedditState.<span class="fu">createInitialState</span>();</a>
+<a class="sourceLine" id="cb12-4" data-line-number="4">    TestSink&lt;RedditState, RedditSideEffect&gt; sink =</a>
+<a class="sourceLine" id="cb12-5" data-line-number="5">            <span class="kw">new</span> TestSink&lt;&gt;(initialState);</a>
+<a class="sourceLine" id="cb12-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb12-7" data-line-number="7">    sink.<span class="fu">submitAction</span>(CallFetchPosts.<span class="fu">create</span>(<span class="st">&quot;news&quot;</span>));</a>
+<a class="sourceLine" id="cb12-8" data-line-number="8">    sink.<span class="fu">submitAction</span>(FetchPosts.<span class="fu">create</span>(</a>
+<a class="sourceLine" id="cb12-9" data-line-number="9">            ResponseMocks.<span class="fu">fetchPosts_Success</span>));</a>
+<a class="sourceLine" id="cb12-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb12-11" data-line-number="11">    RedditState currentState = sink.<span class="fu">getCurrentState</span>();</a>
+<a class="sourceLine" id="cb12-12" data-line-number="12">    RedditState expectedState = RedditState.<span class="fu">Ready</span>.<span class="fu">create</span>(</a>
+<a class="sourceLine" id="cb12-13" data-line-number="13">        <span class="st">&quot;news&quot;</span>,</a>
+<a class="sourceLine" id="cb12-14" data-line-number="14">        ResponseMocks.<span class="fu">fetchPosts_Success</span>.<span class="fu">posts</span>());</a>
+<a class="sourceLine" id="cb12-15" data-line-number="15">    <span class="fu">assertThat</span>(currentState, <span class="fu">is</span>(<span class="fu">equalTo</span>(expectedState)));</a>
+<a class="sourceLine" id="cb12-16" data-line-number="16">}</a></code></pre></div>
+<p>This test uses a custom <code>ActionSink</code> implementation, <code>TestSink</code> that exposes a <code>getCurrentState()</code> method that lets you peek into the current state so that you can make assertion about its value. It also exposes a <code>getGeneratedSideEffects()</code> to peek into all the generated side effects so far. Here’s another test that asserts that a <code>FetchPosts</code> side effect is generated by these same two actions:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode java"><code class="sourceCode java"><a class="sourceLine" id="cb13-1" data-line-number="1"><span class="at">@Test</span></a>
+<a class="sourceLine" id="cb13-2" data-line-number="2"><span class="kw">public</span> <span class="dt">void</span> <span class="fu">should_generate_FetchPosts_side_effect_in_absence_of_errors</span>() {</a>
+<a class="sourceLine" id="cb13-3" data-line-number="3">    RedditState initialState = RedditState.<span class="fu">createInitialState</span>();</a>
+<a class="sourceLine" id="cb13-4" data-line-number="4">    TestSink&lt;RedditState, RedditSideEffect&gt; sink =</a>
+<a class="sourceLine" id="cb13-5" data-line-number="5">            <span class="kw">new</span> TestSink&lt;&gt;(initialState);</a>
+<a class="sourceLine" id="cb13-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb13-7" data-line-number="7">    sink.<span class="fu">submitAction</span>(CallFetchPosts.<span class="fu">create</span>(<span class="st">&quot;news&quot;</span>));</a>
+<a class="sourceLine" id="cb13-8" data-line-number="8">    sink.<span class="fu">submitAction</span>(FetchPosts.<span class="fu">create</span>(</a>
+<a class="sourceLine" id="cb13-9" data-line-number="9">            ResponseMocks.<span class="fu">fetchPosts_Success</span>));</a>
+<a class="sourceLine" id="cb13-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb13-11" data-line-number="11"></a>
+<a class="sourceLine" id="cb13-12" data-line-number="12">    <span class="bu">List</span>&lt;RedditSideEffect&gt; actualSideEffects = sink.<span class="fu">getGeneratedSideEffects</span>();</a>
+<a class="sourceLine" id="cb13-13" data-line-number="13">    <span class="bu">List</span>&lt;RedditSideEffect&gt; expectedSideEffects = <span class="bu">Collections</span>.<span class="fu">singletonList</span>(</a>
+<a class="sourceLine" id="cb13-14" data-line-number="14">            RedditSideEffect.<span class="fu">FetchPosts</span>.<span class="fu">create</span>(<span class="st">&quot;news&quot;</span>));</a>
+<a class="sourceLine" id="cb13-15" data-line-number="15">    <span class="fu">assertThat</span>(actualSideEffects, <span class="fu">is</span>(<span class="fu">equalTo</span>(expectedSideEffects)));</a>
+<a class="sourceLine" id="cb13-16" data-line-number="16">}</a></code></pre></div>
+<h3 id="real-apps">“Real” apps</h3>
+<p>This tiny Reddit client only has one fragment because it only does one thing: fetch posts from a particular subreddit. This isn’t the kind of app I’m targeting but it’s good enough as an example. A more realistic Reddit client would let you do a lot more things like:</p>
+<ul>
+<li>Sign in to your Reddit account</li>
+<li>Fetch posts from your frontpage</li>
+<li>Manage your subscriptions</li>
+<li>Check your DMs</li>
+</ul>
+<p>The list goes on, but I’m sure you get the idea. “Real” apps have lots of features. With this design pattern, each of these features would be implemented in its own fragment, defining its own state and side effects, isolated from the other features. It’s like having your app made of dozens of little apps that are easy to manage.</p>
+<p>The app I’m currently working on in my day job is made of 24 “little apps” occupying 3 MB just in Java source files. It also has an additional 3 MB of legacy java code that I can’t really touch, let alone convert to this pattern. It’s been less than 6 months of development and it is very likely that we’ll add many more features before the year ends. No matter how much it grows I’m confident that it will remain as maintainable as always.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>

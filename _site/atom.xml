@@ -8,8 +8,16 @@
         <name>Gabriel</name>
         <email></email>
     </author>
-    <updated>2019-01-22T00:00:00Z</updated>
+    <updated>2019-04-30T00:00:00Z</updated>
     <entry>
+    <title>Implementing MVI in Android</title>
+    <link href="https://gaumala.com/posts/2019-04-30-writing-mvi-apps-in-android.html" />
+    <id>https://gaumala.com/posts/2019-04-30-writing-mvi-apps-in-android.html</id>
+    <published>2019-04-30T00:00:00Z</published>
+    <updated>2019-04-30T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Writing maintainable android apps with the Model-View-Intent design pattern]]></summary>
+</entry>
+<entry>
     <title>Building a Blog Part 5: Continuous integration with CircleCI</title>
     <link href="https://gaumala.com/posts/2019-01-22-continuous-integration-with-circle-ci.html" />
     <id>https://gaumala.com/posts/2019-01-22-continuous-integration-with-circle-ci.html</id>
