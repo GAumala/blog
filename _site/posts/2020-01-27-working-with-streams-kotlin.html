@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Android,Java,Kotlin,stream,InputStream,OutputStream">
+    <meta name="description" content="Working with InputStream and OutputStream in Kotlin" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Working with InputStream and OutputStream in Kotlin">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Working with byte streams in Kotlin">
+    <meta property="og:description" content="Working with InputStream and OutputStream in Kotlin">
+    <title>Working with byte streams in Kotlin</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/gaumala987" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Working with byte streams in Kotlin</h1>
+    <div class="date"><span>January 27, 2020</span></div>
+    <article>
+      <section>
+        <p>Sometimes it is necessary to process data that is so large that it is no longer practical to load it all into memory. This is often the case in mobile apps, where computational resources are very limited, so it’s better to stream the data and avoid an <code>OutOfMemoryException</code>. Recently I was working in an app written in Kotlin that processes big files, up to 300 MB, so I decided to write down some useful tips for working with byte streams in Kotlin.</p>
+<!--more-->
+<h3 id="extension-functions">Extension functions</h3>
+<p>The Kotlin standard library has lots of extension functions that improve existing Java APIs. Most of them are really easy to implement, but nevertheless it’s great to have them at your disposal, plus, they often make code more readable. Here are some of my favorite extensions for byte streams:</p>
+<ul>
+<li><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/java.io.-file/input-stream.html"><code>File.inputStream()</code></a> Convenient function for opening an <code>InputStream</code> to a file.</li>
+<li><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/java.io.-file/output-stream.html"><code>File.outputStream()</code></a> Convenient function for opening an <code>OutputStream</code> to a file.</li>
+<li><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/java.io.-input-stream/reader.html"><code>InputStream.reader()</code></a> Creates a <code>Reader</code> from an <code>InputStream</code>. Useful for parsing text files. <code>File</code> also has a similar function, in case you don’t need the <code>InputStream</code>.</li>
+<li><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/use.html"><code>Closeable.use()</code></a>. This makes sure that the stream is closed after you are done using it. This is great for avoiding leaking resources.</li>
+<li><a href="https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/java.io.-input-stream/copy-to.html"><code>InputStream.copyTo()</code></a>. This copies the contents of an <code>InputStream</code> to a <code>OutputStream</code>. This is super useful for copying or downloading files.</li>
+</ul>
+<p>As an example of the usage of some of these functions here’s how you could implement a function for copying files:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="kw">fun</span> <span class="fu">copyFile</span>(<span class="va">sourceFile</span>: <span class="dt">File</span>, <span class="va">destinationFile</span>: <span class="dt">File</span>) {</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">    sourceFile.inputStream().use { input -&gt;</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">        destinationFile.outputStream().use { output -&gt;</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">          input.copyTo(output) </a>
+<a class="sourceLine" id="cb1-5" data-line-number="5">        }</a>
+<a class="sourceLine" id="cb1-6" data-line-number="6">    }</a>
+<a class="sourceLine" id="cb1-7" data-line-number="7">}</a></code></pre></div>
+<p>This looks nice, but there’s no need to add this to your codebase because there is already and extension function for copying files, <code>File.copyTo()</code>, and it does exactly this but contains additional validations and configurable options.</p>
+<p>The standard library is great, but it can only contain so many functions. As it is included as a regular dependency in Android projects, new problems could arise if it becomes too bloated. There are some things that you will have to implement yourself or look elsewhere. The next section is an example of this.</p>
+<h3 id="tracking-the-number-of-processed-bytes">Tracking the number of processed bytes</h3>
+<p>Neither Java nor Kotlin have a built-in solution for tracking the number of processed bytes in a stream so that the UI can display the progress of the task. This is important because if you are processing large amounts of data, it will take a proportionally long amount of time. The user should be able to see the progress of the task and estimate how much time is left to complete it.</p>
+<p>The solution is to create wrapper classes that monitor the invocations of the <code>read()</code> and <code>write()</code> methods, tracking the number of processed bytes and calling a lambda function whenever this number increases. Here’s how I implemented it:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">class</span> ObservableInputStream(<span class="kw">private</span> <span class="kw">val</span> <span class="va">wrapped</span>: <span class="dt">InputStream</span>,</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">                            <span class="kw">private</span> <span class="kw">val</span> <span class="va">onBytesRead</span>: (<span class="dt">Long</span>) -&gt; <span class="dt">Unit</span>): <span class="dt">InputStream</span>() {</a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">    <span class="kw">private</span> <span class="kw">var</span> <span class="va">bytesRead</span>: <span class="kw">Long</span> = <span class="dv">0</span></a>
+<a class="sourceLine" id="cb2-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-6" data-line-number="6">    <span class="kw">override</span> <span class="kw">fun</span> read(): <span class="dt">Int</span> {</a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">        <span class="kw">val</span> <span class="va">res</span> = wrapped.read()</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8">        bytesRead++</a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">        onBytesRead(bytesRead)</a>
+<a class="sourceLine" id="cb2-10" data-line-number="10">        <span class="kw">return</span> res</a>
+<a class="sourceLine" id="cb2-11" data-line-number="11">    }</a>
+<a class="sourceLine" id="cb2-12" data-line-number="12"></a>
+<a class="sourceLine" id="cb2-13" data-line-number="13">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-14" data-line-number="14">    <span class="kw">override</span> <span class="kw">fun</span> read(<span class="va">b</span>: <span class="dt">ByteArray</span>): <span class="dt">Int</span> {</a>
+<a class="sourceLine" id="cb2-15" data-line-number="15">        <span class="kw">val</span> <span class="va">res</span> = wrapped.read(b)</a>
+<a class="sourceLine" id="cb2-16" data-line-number="16">        bytesRead += b.size.toLong()</a>
+<a class="sourceLine" id="cb2-17" data-line-number="17">        onBytesRead(bytesRead)</a>
+<a class="sourceLine" id="cb2-18" data-line-number="18">        <span class="kw">return</span> res</a>
+<a class="sourceLine" id="cb2-19" data-line-number="19">    }</a>
+<a class="sourceLine" id="cb2-20" data-line-number="20"></a>
+<a class="sourceLine" id="cb2-21" data-line-number="21">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-22" data-line-number="22">    <span class="kw">override</span> <span class="kw">fun</span> read(<span class="va">b</span>: <span class="dt">ByteArray</span>, <span class="va">off</span>: <span class="dt">Int</span>, <span class="va">len</span>: <span class="dt">Int</span>): <span class="dt">Int</span> {</a>
+<a class="sourceLine" id="cb2-23" data-line-number="23">        <span class="kw">val</span> <span class="va">res</span> = wrapped.read(b, off, len)</a>
+<a class="sourceLine" id="cb2-24" data-line-number="24">        bytesRead += len.toLong()</a>
+<a class="sourceLine" id="cb2-25" data-line-number="25">        onBytesRead(bytesRead)</a>
+<a class="sourceLine" id="cb2-26" data-line-number="26">        <span class="kw">return</span> res</a>
+<a class="sourceLine" id="cb2-27" data-line-number="27">    }</a>
+<a class="sourceLine" id="cb2-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb2-29" data-line-number="29">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-30" data-line-number="30">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
+<a class="sourceLine" id="cb2-31" data-line-number="31">        wrapped.close()</a>
+<a class="sourceLine" id="cb2-32" data-line-number="32">    }</a>
+<a class="sourceLine" id="cb2-33" data-line-number="33">}</a>
+<a class="sourceLine" id="cb2-34" data-line-number="34"></a>
+<a class="sourceLine" id="cb2-35" data-line-number="35"><span class="kw">class</span> ObservableOutputStream(<span class="kw">private</span> <span class="kw">val</span> <span class="va">wrapped</span>: <span class="dt">OutputStream</span>,</a>
+<a class="sourceLine" id="cb2-36" data-line-number="36">                           <span class="kw">private</span> <span class="kw">val</span> <span class="va">onBytesWritten</span>: (<span class="dt">Long</span>) -&gt; <span class="dt">Unit</span>): <span class="dt">OutputStream</span>() {</a>
+<a class="sourceLine" id="cb2-37" data-line-number="37">    <span class="kw">private</span> <span class="kw">var</span> <span class="va">bytesWritten</span>: <span class="kw">Long</span> = <span class="dv">0</span></a>
+<a class="sourceLine" id="cb2-38" data-line-number="38"></a>
+<a class="sourceLine" id="cb2-39" data-line-number="39">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-40" data-line-number="40">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">Int</span>) {</a>
+<a class="sourceLine" id="cb2-41" data-line-number="41">        wrapped.write(b)</a>
+<a class="sourceLine" id="cb2-42" data-line-number="42">        bytesWritten++</a>
+<a class="sourceLine" id="cb2-43" data-line-number="43">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-44" data-line-number="44">    }</a>
+<a class="sourceLine" id="cb2-45" data-line-number="45"></a>
+<a class="sourceLine" id="cb2-46" data-line-number="46">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-47" data-line-number="47">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>) {</a>
+<a class="sourceLine" id="cb2-48" data-line-number="48">        wrapped.write(b)</a>
+<a class="sourceLine" id="cb2-49" data-line-number="49">        bytesWritten += b.size.toLong()</a>
+<a class="sourceLine" id="cb2-50" data-line-number="50">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-51" data-line-number="51">    }</a>
+<a class="sourceLine" id="cb2-52" data-line-number="52"></a>
+<a class="sourceLine" id="cb2-53" data-line-number="53">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-54" data-line-number="54">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>, <span class="va">off</span>: <span class="dt">Int</span>, <span class="va">len</span>: <span class="dt">Int</span>) {</a>
+<a class="sourceLine" id="cb2-55" data-line-number="55">        wrapped.write(b, off, len)</a>
+<a class="sourceLine" id="cb2-56" data-line-number="56">        bytesWritten += len.toLong()</a>
+<a class="sourceLine" id="cb2-57" data-line-number="57">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-58" data-line-number="58">    }</a>
+<a class="sourceLine" id="cb2-59" data-line-number="59"></a>
+<a class="sourceLine" id="cb2-60" data-line-number="60">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-61" data-line-number="61">    <span class="kw">override</span> <span class="kw">fun</span> flush() {</a>
+<a class="sourceLine" id="cb2-62" data-line-number="62">        wrapped.flush()</a>
+<a class="sourceLine" id="cb2-63" data-line-number="63">    }</a>
+<a class="sourceLine" id="cb2-64" data-line-number="64"></a>
+<a class="sourceLine" id="cb2-65" data-line-number="65">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-66" data-line-number="66">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
+<a class="sourceLine" id="cb2-67" data-line-number="67">        wrapped.close()</a>
+<a class="sourceLine" id="cb2-68" data-line-number="68">    }</a>
+<a class="sourceLine" id="cb2-69" data-line-number="69">}</a></code></pre></div>
+<p>To use this, wrap the original stream with one of these classes, attaching a lambda function to execute every time the number of processed bytes increases. For example here’s how you could report progress while downloading a file via HTTP:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">fun</span> <span class="fu">downloadFileViaHTTP</span>(<span class="va">url</span>: <span class="dt">String</span>, <span class="va">destinationFile</span>: <span class="dt">file</span>) {</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">    <span class="kw">val</span> <span class="va">urlObj</span> = URL(url)</a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">    <span class="kw">val</span> <span class="va">connection</span> = urlObj.openConnection()</a>
+<a class="sourceLine" id="cb3-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb3-5" data-line-number="5">    <span class="co">// To calculate progress, we need to now the total size </span></a>
+<a class="sourceLine" id="cb3-6" data-line-number="6">    <span class="co">// beforehand. We can get that info from HTTP headers</span></a>
+<a class="sourceLine" id="cb3-7" data-line-number="7">    <span class="kw">val</span> <span class="va">contentLength</span> = connection.getHeaderField(<span class="st">&quot;Content-Length&quot;</span>)</a>
+<a class="sourceLine" id="cb3-8" data-line-number="8">    <span class="kw">val</span> <span class="va">totalDownloadSize</span> = contentLength.toLong()</a>
+<a class="sourceLine" id="cb3-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb3-10" data-line-number="10">    <span class="co">// Wrap the connection input stream with ObservableInputStream</span></a>
+<a class="sourceLine" id="cb3-11" data-line-number="11">    <span class="co">// in order to monitor it.</span></a>
+<a class="sourceLine" id="cb3-12" data-line-number="12">    <span class="kw">val</span> <span class="va">urlInputStream</span> = ObservableInputStream(connection.getInputStream()) {</a>
+<a class="sourceLine" id="cb3-13" data-line-number="13">        <span class="kw">val</span> <span class="va">progress</span> = it * <span class="dv">100</span> / totalDownloadSize</a>
+<a class="sourceLine" id="cb3-14" data-line-number="14">        <span class="co">// updateProgress() should post a message to the UI thread </span></a>
+<a class="sourceLine" id="cb3-15" data-line-number="15">        <span class="co">// to update a progress bar or a similar widget</span></a>
+<a class="sourceLine" id="cb3-16" data-line-number="16">        updateProgress(progress.toInt())</a>
+<a class="sourceLine" id="cb3-17" data-line-number="17">    }</a>
+<a class="sourceLine" id="cb3-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb3-19" data-line-number="19">    urlInputStream.use { input -&gt;</a>
+<a class="sourceLine" id="cb3-20" data-line-number="20">        destinationFile.outputStream().use { output -&gt;</a>
+<a class="sourceLine" id="cb3-21" data-line-number="21">            input.copyTo(output)</a>
+<a class="sourceLine" id="cb3-22" data-line-number="22">        }</a>
+<a class="sourceLine" id="cb3-23" data-line-number="23">    }</a>
+<a class="sourceLine" id="cb3-24" data-line-number="24">}</a></code></pre></div>
+<p>Once again I use the convenient <code>InputStream.copyTo()</code> function to move bytes from the <code>ObservableInputStream</code> into the <code>OutputStream</code> that writes the file to internal storage. But, what if you wanted to do the opposite? There is no <code>OutputStream.copyTo()</code>, so how could you transfer data from <code>OutputStream</code> to <code>InputStream</code>?</p>
+<h3 id="transferring-data-from-outputstream-to-inputstream">Transferring data from <code>OutputStream</code> to <code>InputStream</code></h3>
+<p>This might sound a little odd, but there are legitimate cases for doing this. Just google “Java OutputStream to InputStream” and you’ll get thousands of results. Besides, it’s a good use case for one of Kotlin’s most recent features. Ideally you should always read from <code>InputStream</code> and then write into <code>OutputStream</code>, but imagine a scenario in which you know that some external library is about to write data to an <code>OutputStream</code> but you’d like to read that output, apply some transformation and then write it to a new stream.</p>
+<p>At first glance this seems impossible because <code>OutputStream</code> doesn’t have a <code>read()</code> method, only <code>write()</code>. Java’s byte streams aren’t as easy to compose as UNIX streams in which you can just use the <code>|</code> operator to redirect the output of one program to the input of another. What you would have to do here is write to a “mocked” <code>OutputStream</code> that doesn’t really write data anywhere, just holds on to it until you request it. There is a Java class for this, <a href="https://docs.oracle.com/javase/7/docs/api/java/io/PipedOutputStream.html"><code>PipedOutputStream</code></a>, but there’s still one little problem.</p>
+<p><code>PipedOutputStream</code> lets you create a <code>PipedInputStream</code> so that you can <code>read()</code> the data that is being written, but none of this changes the fact that <code>write()</code> blocks the calling thread. This means that if you want to read the data as it is being written, you need to do it <strong>concurrently</strong>. The good news is that Kotlin has <a href="https://kotlinlang.org/docs/reference/coroutines-overview.html">coroutines</a> now, so you can easily offload the writing to new coroutine, and read on the current one.</p>
+<p>Finally, here is a little example to illustrate how to use <code>PipedOutputStream</code>. Suppose you want to download a file via FTP, but you want to decompress it before it gets written to the internal storage. The solution is to download in one coroutine and decompress in the other one.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb4-1" data-line-number="1"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">downloadStream</span>(<span class="va">ftpClient</span>: <span class="dt">FTPClient</span>,</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">                           <span class="va">fileName</span>: <span class="dt">String</span>,</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">                           <span class="va">output</span>: <span class="dt">PipedOutputStream</span>) {</a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">    <span class="co">// ftpClient immediately writes the downloaded bytes</span></a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">    <span class="co">// to the output stream</span></a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">    ftpClient.retrieveFile(fileName, output)</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">}</a>
+<a class="sourceLine" id="cb4-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb4-9" data-line-number="9"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">decompressAndWriteStream</span>(</a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">    <span class="va">sourceStream</span>: <span class="dt">PipedOutputStream</span></a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">    <span class="va">destinationStream</span>: <span class="dt">OutputStream</span>) {</a>
+<a class="sourceLine" id="cb4-12" data-line-number="12"></a>
+<a class="sourceLine" id="cb4-13" data-line-number="13">    <span class="kw">val</span> <span class="va">srcInputStream</span> = PipedInputStream(sourceStream)</a>
+<a class="sourceLine" id="cb4-14" data-line-number="14">    <span class="kw">val</span> <span class="va">decompressedInputStream</span> =</a>
+<a class="sourceLine" id="cb4-15" data-line-number="15">        GZIPInputStream(srcInputStream)</a>
+<a class="sourceLine" id="cb4-16" data-line-number="16">    decompressedInputStream.copyTo(destinationStream)</a>
+<a class="sourceLine" id="cb4-17" data-line-number="17">}</a>
+<a class="sourceLine" id="cb4-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb4-19" data-line-number="19">suspend <span class="kw">fun</span> <span class="fu">downloadFile</span>(<span class="va">coroutineScope</span>: <span class="dt">CoroutineScope</span>,</a>
+<a class="sourceLine" id="cb4-20" data-line-number="20">                         <span class="va">destFile</span>: <span class="dt">File</span>,</a>
+<a class="sourceLine" id="cb4-21" data-line-number="21">                         <span class="va">fileName</span>: <span class="dt">String</span>) {</a>
+<a class="sourceLine" id="cb4-22" data-line-number="22">    <span class="kw">val</span> <span class="va">ftpClient</span> = FTPClient()</a>
+<a class="sourceLine" id="cb4-23" data-line-number="23">    prepareForDownload(ftpClient)</a>
+<a class="sourceLine" id="cb4-24" data-line-number="24">    <span class="kw">val</span> <span class="va">fileOutputStream</span> = destFile.outputStream()</a>
+<a class="sourceLine" id="cb4-25" data-line-number="25"></a>
+<a class="sourceLine" id="cb4-26" data-line-number="26">    <span class="cf">try</span> {</a>
+<a class="sourceLine" id="cb4-27" data-line-number="27">        <span class="kw">val</span> <span class="va">pipedOutputStream</span> = PipedOutputStream()</a>
+<a class="sourceLine" id="cb4-28" data-line-number="28"></a>
+<a class="sourceLine" id="cb4-29" data-line-number="29">        <span class="co">// launch a new coroutine to download the data</span></a>
+<a class="sourceLine" id="cb4-30" data-line-number="30">        <span class="kw">val</span> <span class="va">job</span> = coroutineScope.launch {</a>
+<a class="sourceLine" id="cb4-31" data-line-number="31">            downloadStream(ftpClient, fileName, pipedOutputStream)</a>
+<a class="sourceLine" id="cb4-32" data-line-number="32">        }</a>
+<a class="sourceLine" id="cb4-33" data-line-number="33"></a>
+<a class="sourceLine" id="cb4-34" data-line-number="34">        <span class="co">// decompress in the current coroutine while </span></a>
+<a class="sourceLine" id="cb4-35" data-line-number="35">        <span class="co">// the other one downloads the data</span></a>
+<a class="sourceLine" id="cb4-36" data-line-number="36">        decompressAndWriteStream(</a>
+<a class="sourceLine" id="cb4-37" data-line-number="37">            sourceStream = pipedOutputStream,</a>
+<a class="sourceLine" id="cb4-38" data-line-number="38">            destinationStream = fileOutputStream)</a>
+<a class="sourceLine" id="cb4-39" data-line-number="39"></a>
+<a class="sourceLine" id="cb4-40" data-line-number="40">        <span class="co">// Once the file is completely written, the coroutine should </span></a>
+<a class="sourceLine" id="cb4-41" data-line-number="41">        <span class="co">// have finished, but just to be safe make sure it exits.</span></a>
+<a class="sourceLine" id="cb4-42" data-line-number="42">        job.join()</a>
+<a class="sourceLine" id="cb4-43" data-line-number="43"></a>
+<a class="sourceLine" id="cb4-44" data-line-number="44">    } <span class="cf">finally</span> {</a>
+<a class="sourceLine" id="cb4-45" data-line-number="45">        fileOutputStream.close()</a>
+<a class="sourceLine" id="cb4-46" data-line-number="46">        ftpClient.disconnect()</a>
+<a class="sourceLine" id="cb4-47" data-line-number="47">    }</a>
+<a class="sourceLine" id="cb4-48" data-line-number="48">}</a></code></pre></div>
+<p>Coroutines make dealing with concurrency much easier. In fact, I was very surprised to see this code work correctly on my first try. Since I process multiple large files in parallel I make extensive use of Coroutines. I think this is my favorite feature and the biggest reason to switch to Kotlin for Android development.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>
