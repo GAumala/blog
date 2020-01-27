@@ -20,6 +20,7 @@ if [[ `git status --porcelain` ]]; then
     git commit -m "deploy #$CIRCLE_BUILD_NUM"
   else
     git commit -m "deploy manually"
+  fi
 
   git push origin server
 else
