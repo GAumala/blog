@@ -83,7 +83,8 @@ class ObservableInputStream(private val wrapped: InputStream,
     @Throws(IOException::class)
     override fun read(): Int {
         val res = wrapped.read()
-        bytesRead++
+        if (res > -1)
+          bytesRead++
         onBytesRead(bytesRead)
         return res
     }
@@ -91,7 +92,7 @@ class ObservableInputStream(private val wrapped: InputStream,
     @Throws(IOException::class)
     override fun read(b: ByteArray): Int {
         val res = wrapped.read(b)
-        bytesRead += b.size.toLong()
+        bytesRead += res
         onBytesRead(bytesRead)
         return res
     }
@@ -99,7 +100,7 @@ class ObservableInputStream(private val wrapped: InputStream,
     @Throws(IOException::class)
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         val res = wrapped.read(b, off, len)
-        bytesRead += len.toLong()
+        bytesRead += res
         onBytesRead(bytesRead)
         return res
     }
