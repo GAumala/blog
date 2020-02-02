@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="GIMP,image,sticker,messaging,Linux,FOSS">
+    <meta name="description" content="Hello World!" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Hello World!">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Creating stickers with GIMP">
+    <meta property="og:description" content="Hello World!">
+    <title>Creating stickers with GIMP</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/gaumala987" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Creating stickers with GIMP</h1>
+    <div class="date"><span>February  1, 2020</span></div>
+    <article>
+      <section>
+        <p>I’m no graphic designer, but every time I need to do some basic image editing I go with GIMP. I always try to go with free software, even for the most meaningless tasks. GIMP may not be the most popular program, or even the best one, but it is free and you can do a lot with it. To illustrate this, I’ll show you how to use GIMP to create stickers for Telegram and WhatsApp. The goal of this tutorial is to use create <a href="../assets/images/my_gimp_sticker.webp">this sticker</a> from a photo. Even if you are not interested in stickers, you can still learn how to work with layers, remove the background from photos, and add smooth borders to any kind of shape.</p>
+<!--more-->
+<h2 id="setup-the-canvas">Setup the canvas</h2>
+<p>To begin, create a new 512 x 512 pixels image with transparent background. Click <code>File &gt; New</code> in the menu bar and fill out the dialog form. Make sure you open advanced options and fill with transparency, otherwise you’ll get a white background.</p>
+<p><a href="../assets/images/gimp_01.jpg"><img src="../assets/images/gimp_01.jpg" /></a></p>
+<p>Now that the canvas is ready it’s time to open the image you want to use for your sticker. Click <code>File &gt; Open</code> in the menu bar and select your file. You should have two windows like this:</p>
+<p><a href="../assets/images/gimp_02.jpg"><img src="../assets/images/gimp_02.jpg" /></a></p>
+<p>Use the <code>Rectangle Select Tool (R)</code> to select the part of the image you are interested in (it doesn’t have to be perfect tight), copy it, and paste it into the empty canvas. If it’s bigger that the canvas you can use the <code>Scale Tool  (Shift + S)</code> to shrink it. Since you pasted the image into the canvas, you probably have a floating selection layer with the pasted content in the layers window. This needs to be in a proper layer so right click it and click <code>To New Layer</code> in the context menu. If you don’t have any floating layers, then it probably already got created or merged with the background, so you can just skip to the next section.</p>
+<p><a href="../assets/images/gimp_03.jpg"><img src="../assets/images/gimp_03.jpg" /></a></p>
+<h2 id="remove-the-background">Remove the background</h2>
+<p>After the new layer is ready it’s time to cut out the image with the desired shape and remove the background. This is the longest step, but it isn’t really that hard. You just need a little patience. First, zoom in to at least 200% and use the <code>Free Select Tool (F)</code> to click on the points where you want to cut. You complete the selection by ending at the same point where you started it.</p>
+<p><a href="../assets/images/gimp_04.jpg"><img src="../assets/images/gimp_04.jpg" /></a></p>
+<p>Here you should strive for smooth shapes. It doesn’t have to be perfect but avoid sharp corners or spikes. Also try to leave some space between the selection and the content that you want to be visible. The resulting selection looks like this:</p>
+<p><a href="../assets/images/gimp_05.jpg"><img src="../assets/images/gimp_05.jpg" /></a></p>
+<p>After the selection is ready, it’s easier to cut it out by just sending it to a new layer. You can create the new layer in the same way as you did after pasting and scaling. The only difference is that this time the selection isn’t floating. To float it, right click inside the selection and then click <code>Select &gt; Float</code> in the context menu.</p>
+<p><a href="../assets/images/gimp_06.jpg"><img src="../assets/images/gimp_06.jpg" /></a></p>
+<p>Now that you have a floating layer with the actual sticker content, you can remove the background by deleting the underneath layer. In the layers window, right click it and then click <code>Delete Layer</code> in the context menu.</p>
+<p><a href="../assets/images/gimp_07.jpg"><img src="../assets/images/gimp_07.jpg" /></a></p>
+<p>Now that you finished cutting, you should only have one layer that covers the whole canvas and contains the sticker at the center. If you have more layers, merge them down. In the layers window, right click the top most layer and click <code>Merge Down</code>.</p>
+<p><a href="../assets/images/gimp_08.jpg"><img src="../assets/images/gimp_08.jpg" /></a></p>
+<h2 id="add-a-border">Add a border</h2>
+<p>The sticker is almost ready, but it’s good practice to include a white border so that it is perfectly visible no matter what background is used in the messaging app. For this matter you must select the sticker’s precise shape. The fastest way to do this is by using the <code>Fuzzy Select Tool (U)</code> to click anywhere in the transparent background and then inverting that selection by clicking <code>Select &gt; Invert</code> in the menu bar.</p>
+<p><a href="../assets/images/gimp_09.jpg"><img src="../assets/images/gimp_09.jpg" /></a></p>
+<p>Once you have the selection ready, create the border selection by clicking <code>Select &gt; Border</code> in the menu bar and fill out the dialog form. I usually go with a border size of 4px.</p>
+<p><a href="../assets/images/gimp_10.jpg"><img src="../assets/images/gimp_10.jpg" /></a></p>
+<p>The border is not created yet, there is only a selection for it. Before proceeding, you might want to make it smoother by applying a Gaussian Blur. To do this, click <code>Filters &gt; Blur &gt; Gaussian Blur</code> in the menu bar and fill out the dialog form. The only relevant values are <code>Size X</code> and <code>Size Y</code>. I usually go with a value of 4 for both, just like with the border size.</p>
+<p><a href="../assets/images/gimp_11.jpg"><img src="../assets/images/gimp_11.jpg" /></a></p>
+<p><a href="../assets/images/gimp_12.jpg"><img src="../assets/images/gimp_12.jpg" /></a></p>
+<p>Now that the border selection is ready, just use the <code>Bucket Fill Tool (Shift +  B)</code> to paint it white, and that’s it! You are ready to export.</p>
+<p><a href="../assets/images/gimp_13.jpg"><img src="../assets/images/gimp_13.jpg" /></a></p>
+<h2 id="export-and-distribute">Export and distribute</h2>
+<p>It is recommended to export in the <a href="https://developers.google.com/speed/webp">WebP format</a>, as it is the most efficient format for stickers, so choose that in the export dialog. Unfortunately, this isn’t supported everywhere yet, so you might want to export as PNG as well. If you keep the GIMP .xcf file, you can later export again in whatever formats you may need. Now you are ready to upload your sticker to your platform of choice.</p>
+<p>Uploading to Telegram is as easy as texting the <a href="https://telegram.me/stickers">@stickers</a> bot and following its instructions. Once your pack is ready, users can download it from within the app.</p>
+<p>WhatsApp is more complicated as it requires you to build a whole app to distribute your stickers. The good news is that WhatsApp already provides <a href="https://github.com/WhatsApp/stickers">sample apps for third party stickers</a> so you can just fork the repo and replace the sample sticker pack with your own.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>

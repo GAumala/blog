@@ -7,8 +7,16 @@
         <description><![CDATA[My latest blog posts]]></description>
         <atom:link href="https://gaumala.com/rss/posts.rss" rel="self"
                    type="application/rss+xml" />
-        <lastBuildDate>Mon, 27 Jan 2020 00:00:00 UT</lastBuildDate>
+        <lastBuildDate>Sat, 01 Feb 2020 00:00:00 UT</lastBuildDate>
         <item>
+    <title>Creating stickers with GIMP</title>
+    <link>https://gaumala.com/posts/2020-02-01-creating-stickers-with-gimp.html</link>
+    <description><![CDATA[Hello World!]]></description>
+    <pubDate>Sat, 01 Feb 2020 00:00:00 UT</pubDate>
+    <guid>https://gaumala.com/posts/2020-02-01-creating-stickers-with-gimp.html</guid>
+    <dc:creator>Gabriel</dc:creator>
+</item>
+<item>
     <title>Working with byte streams in Kotlin</title>
     <link>https://gaumala.com/posts/2020-01-27-working-with-streams-kotlin.html</link>
     <description><![CDATA[Working with InputStream and OutputStream in Kotlin]]></description>
