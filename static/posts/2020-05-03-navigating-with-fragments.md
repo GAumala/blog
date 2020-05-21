@@ -119,14 +119,16 @@ Here are some potential issues:
 
 ### Scaling to larger stacks
 
-This example works really nice because there's only one fragment the user can go 
+This example works really nice because there's only one fragment the user can go
 back to. In fact you can get the same result for free by calling 
-`addToBackStack()` in the transaction.  But what if there were three, five, or 
+`addToBackStack()` in the transaction.  But what if there were four, five, or 
 an unbounded number? You'd have to add a value to the bundle for each of them. 
-At that point it's better to  use something like a queue in the arguments bundle 
-that you pop each time user presses back. It might be a little more work, but it
-pays off. If you implement the most appropriate data structure for your use 
-case, managing your fragment history is a breeze.
+This isn't a common thing, most apps have only so many fragments in the back 
+stack. But, if you are struggling with this, then it's better to use something 
+like a queue in the arguments bundle that you pop each time user presses back. 
+It might be a little more work, but it pays off. If you implement the most 
+appropriate data structure for your use case, managing your fragment history is 
+a breeze.
 
 ### Coupling fragments
 
@@ -182,9 +184,11 @@ data is limited and serialization should run as fast as possible. Arguments
 should only hold the minimum amount of data for the fragment to be able to work.
 
 If a list fragment displays hundreds of thousands of items, it's probably 
-not a good idea to put them all in a `Bundle`. It may be possible to just pass 
-the current page and load the rest asynchronously from a local database when 
-the fragment is recreated. 
+not a good idea to put them all in a `Bundle`. If the data is loaded from a 
+server, the it might be better to just reload it when the user returns to 
+ensure they always see the most up-to-date data. If you are confident about the 
+data not changing too often then you should cache it so that reloading is 
+instant.
 
 ### Animations
 
