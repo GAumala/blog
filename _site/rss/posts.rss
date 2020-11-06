@@ -7,8 +7,16 @@
         <description><![CDATA[My latest blog posts]]></description>
         <atom:link href="https://gaumala.com/rss/posts.rss" rel="self"
                    type="application/rss+xml" />
-        <lastBuildDate>Sun, 03 May 2020 00:00:00 UT</lastBuildDate>
+        <lastBuildDate>Fri, 06 Nov 2020 00:00:00 UT</lastBuildDate>
         <item>
+    <title>Arch Linux won't boot, now what?</title>
+    <link>https://gaumala.com/posts/2020-11-06-arch-linux-wont-boot-now-what.html</link>
+    <description><![CDATA[Fixing a broken Arch Linux system]]></description>
+    <pubDate>Fri, 06 Nov 2020 00:00:00 UT</pubDate>
+    <guid>https://gaumala.com/posts/2020-11-06-arch-linux-wont-boot-now-what.html</guid>
+    <dc:creator>Gabriel</dc:creator>
+</item>
+<item>
     <title>Navigating with fragments</title>
     <link>https://gaumala.com/posts/2020-05-03-navigating-with-fragments.html</link>
     <description><![CDATA[Navigating through multiple fragments in an Android application]]></description>
@@ -78,14 +86,6 @@
     <description><![CDATA[Static sites with Haskell using the Hakyll library]]></description>
     <pubDate>Fri, 07 Sep 2018 00:00:00 UT</pubDate>
     <guid>https://gaumala.com/posts/2018-09-07-generating-a-static-site-with-hakyll.html</guid>
-    <dc:creator>Gabriel</dc:creator>
-</item>
-<item>
-    <title>Is this finally working? Oh, hello world!</title>
-    <link>https://gaumala.com/posts/2018-09-03-is-this-finally-working-oh-hello-world.html</link>
-    <description><![CDATA[Hello World!]]></description>
-    <pubDate>Mon, 03 Sep 2018 00:00:00 UT</pubDate>
-    <guid>https://gaumala.com/posts/2018-09-03-is-this-finally-working-oh-hello-world.html</guid>
     <dc:creator>Gabriel</dc:creator>
 </item>
 

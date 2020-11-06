@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Arch,Linux,boot,GRUB,chroot,arch-chroot,pacman,Clonezilla,disk">
+    <meta name="description" content="Fixing a broken Arch Linux system" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Fixing a broken Arch Linux system">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Arch Linux won't boot, now what?">
+    <meta property="og:description" content="Fixing a broken Arch Linux system">
+    <title>Arch Linux won't boot, now what?</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/gaumala987" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Arch Linux won't boot, now what?</h1>
+    <div class="date"><span>November  6, 2020</span></div>
+    <article>
+      <section>
+        <p>I’ve been using Arch Linux for the last 5 years and I’m very happy with its simplicity. It’s great to be able to install <strong>only</strong> the packages that you actually need and get their the most up-to-date versions. Arch Linux is actually really stable, but once a year or so my system breaks. This usually happens after updating the system or messing with configuration files. As this sort of incident becomes more rare I tend to forget what to do to fix my broken system, so I decided to write here the common steps that I take in these situations.</p>
+<!--more-->
+<h2 id="keep-system-backups">Keep system backups</h2>
+<p>Before doing anything, make sure you keep system backups. I think I can’t stress enough how important it is to have full backups of your hard drive. I don’t usually have to restore from backup but it’s good to be prepared for worst case scenario. Please bear in mind that disks can and will fail at some point. Don’t lose your data.</p>
+<p>I try to backup my hard drive before a system update at least once every 3 months. I’ve been keeping in my desk a USB flash drive with <a href="https://clonezilla.org/">Clonezilla</a> installed for years. This makes it super easy to clone the entire disk to an image in an external hard drive. I just boot Clonezilla from the USB drive and follow the “beginner” steps to clone my disk. When it comes to restoring the disk from a saved image, the process is just as simple and straight-forward.</p>
+<h2 id="boot-arch-from-usb-flash-drive">Boot Arch from USB flash drive</h2>
+<p>When your system breaks and you can’t log in, the first thing you have to do is <a href="https://wiki.archlinux.org/index.php/Installing_Arch_Linux_on_a_USB_key">install Arch Linux on a USB flash drive</a> and use it as a rescue USB. This gives you a terminal that you can use to access your system. You are likely to spend a good amount with this bare bones terminal so I suggest to take a few minutes to tweak it a little to make it more comfortable for you. In my case, my keyboard has a Spanish layout so I set the keyboard layout accordingly:</p>
+<pre><code>loadkeys es</code></pre>
+<h2 id="mount-the-linux-filesystem">Mount the Linux filesystem</h2>
+<p>From the live installation, You can access your files and data by mounting the Linux filesystem partition.</p>
+<pre><code>mount /dev/sdaX /mnt</code></pre>
+<p><code>/dev/sdaX</code> has to be replaced with the actual partition. You can check that by running <code>fdisk -l</code>. In my case, this is the output:</p>
+<pre><code>Device       Start        End    Sectors  Size Type
+/dev/sda1     2048     196607     194560   95M EFI System
+/dev/sda2   196608    8007679    7811072  3.7G Linux swap
+/dev/sda3  8007680 3907028991 3899021312  1.8T Linux filesystem</code></pre>
+<p>As you can see <code>/dev/sda1</code> is the “boot” partition, <code>/dev/sda2</code> is used for swap memory and <code>dev/sda3</code> is the one that I have to mount.</p>
+<p>Mounting the filesystem by itself is not very useful. To actually use the files and programs installed in that partition you have to log in as a known user, or <code>chroot</code> into the system.</p>
+<h2 id="chroot">chroot</h2>
+<p>Now that the filesystem is mounted at <code>/mnt</code> (or wherever you want), you can <code>chroot</code> like this:</p>
+<pre><code>arch-chroot /mnt</code></pre>
+<p>Now you have root access to your system, you are free to do anything you want. Before proceeding it would be wise to mount the boot partition at <code>/boot</code> because the root of the issue might be there.</p>
+<pre><code>mount /dev/sdaX /boot</code></pre>
+<p>Once again <code>/dev/sdaX</code> has to be replaced with the actual boot partition as listed by <code>fdisk -l</code>.</p>
+<p>As root user, here are some things that I suggest doing:</p>
+<h4 id="check-recently-edited-config-files">Check recently edited config files</h4>
+<p>Did you recently edit configuration files manually for your bootloader, window manager or desktop environment? You definitely want to check those and try to revert any changes that could have gone wrong. It’s a good idea to keep a backup copy of a configuration file before editing, specially if you don’t really know what you are doing.</p>
+<h4 id="check-your-kernel">Check your kernel</h4>
+<p>If your system fails to boot with an error message <code>Error loading \vmlinuz-linux:  not found</code> or similar, you might want to check that your kernel is installed correctly. Run <code>pacman -Q linux</code> and <code>uname -r</code>, they should have the same kernel version. If they don’t, or you are just feeling paranoid, you can reinstall it with <code>pacman -S linux</code>.</p>
+<h4 id="rebuild-the-initramfs-image">Rebuild the initramfs image</h4>
+<p>It might be a good idea to rebuild the initial ram disk environment, specially if you reinstalled the kernel, although technically pacman hooks should take care of this. Make sure your boot partition is mounted at <code>/boot</code>, otherwise none of this may work, then just run this command:</p>
+<pre><code>mkinitcpio -P</code></pre>
+<h4 id="reinstall-the-bootloader">Reinstall the bootloader</h4>
+<p>Reinstalling the bootloader or rebuilding its configuration files can also help fixing the system. This may be necessary after doing changes inside the boot partition, like when rebuilding the initramfs image.</p>
+<p>In my case I use <a href="https://wiki.archlinux.org/index.php/GRUB">GRUB</a>, so reinstalling it is fairly easy. Again, make sure the boot partition is mounted at <code>/boot</code>, then run these two commands:</p>
+<pre><code>grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg</code></pre>
+<h4 id="restore-all-packages-to-a-specific-date">Restore all packages to a specific date</h4>
+<p>Probably the most likely reason for Arch breaking is a system update (<code>pacman -Syu</code>). Sometimes new package versions introduce breaking changes that are incompatible with the rest of the system. There’s not much you can do here, other than helping out in the <a href="https://bugs.archlinux.org/">bugtracker</a> and waiting for the issue to get sorted out. In the mean time, you can revert all your packages to a specific date in the past using the <a href="https://wiki.archlinux.org/index.php/Arch_Linux_Archive">Arch Linux Archive</a>, a server that stores official repositories snapshots and provides URLs to retrieve them easily. If you don’t know what date you should revert to, you can check pacman logs at <code>/var/log/pacman.log</code>. In my case, my last successful update was on September 30, so I’ll use that.</p>
+<p>First you have to edit <code>etc/pacman.conf</code> and set the Arch Linux Archive URL for every repository. Here’s how my config file looks normally:</p>
+<pre><code>[core]
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+Include = /etc/pacman.d/mirrorlist
+
+[community]
+Include = /etc/pacman.d/mirrorlist
+
+[multilib]
+Include = /etc/pacman.d/mirrorlist</code></pre>
+<p>To rollback, instead of including the mirrorlist, set the snapshot URL like this:</p>
+<pre><code>[core]
+SigLevel = PackageRequired
+Server=https://archive.archlinux.org/repos/2020/09/30/$repo/os/$arch
+
+[extra]
+SigLevel = PackageRequired
+Server=https://archive.archlinux.org/repos/2020/09/30/$repo/os/$arch
+
+[community]
+SigLevel = PackageRequired
+Server=https://archive.archlinux.org/repos/2020/09/30/$repo/os/$arch
+
+[multilib]
+SigLevel = PackageRequired
+Server=https://archive.archlinux.org/repos/2020/09/30/$repo/os/$arch</code></pre>
+<p>Finally, run <code>pacman -Syyuu</code> to update the database with the archived packages. This might take a while, specially if you depend on close mirrors for fast downloads, but once it’s done your system should be working as it did before. You are now effectively stuck in the past, though. Once you are sure that there are no more broken packages in the official repositories you can revert the <code>/etc/pacman.conf</code> changes and update your system again.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>
