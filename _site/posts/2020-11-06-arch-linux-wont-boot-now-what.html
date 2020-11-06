@@ -48,10 +48,10 @@
 /dev/sda1     2048     196607     194560   95M EFI System
 /dev/sda2   196608    8007679    7811072  3.7G Linux swap
 /dev/sda3  8007680 3907028991 3899021312  1.8T Linux filesystem</code></pre>
-<p>As you can see <code>/dev/sda1</code> is the “boot” partition, <code>/dev/sda2</code> is used for swap memory and <code>dev/sda3</code> is the one that I have to mount.</p>
-<p>Mounting the filesystem by itself is not very useful. To actually use the files and programs installed in that partition you have to log in as a known user, or <code>chroot</code> into the system.</p>
+<p>As you can see <code>/dev/sda1</code> is the “boot” partition, <code>/dev/sda2</code> is used for swap memory and <code>/dev/sda3</code> is the one that I have to mount.</p>
+<p>Mounting the filesystem by itself is not very useful. To actually use the files and programs installed in that partition you have to log in as a known user, or <a href="https://en.wikipedia.org/wiki/Chroot">“chroot”</a> into the system.</p>
 <h2 id="chroot">chroot</h2>
-<p>Now that the filesystem is mounted at <code>/mnt</code> (or wherever you want), you can <code>chroot</code> like this:</p>
+<p>Now that the filesystem is mounted at <code>/mnt</code> (or wherever you want), you can chroot like this:</p>
 <pre><code>arch-chroot /mnt</code></pre>
 <p>Now you have root access to your system, you are free to do anything you want. Before proceeding it would be wise to mount the boot partition at <code>/boot</code> because the root of the issue might be there.</p>
 <pre><code>mount /dev/sdaX /boot</code></pre>
