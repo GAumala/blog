@@ -66,16 +66,16 @@ Device       Start        End    Sectors  Size Type
 ```
 
 As you can see `/dev/sda1` is the "boot" partition, `/dev/sda2` is used for 
-swap memory and `dev/sda3` is the one that I have to mount.
+swap memory and `/dev/sda3` is the one that I have to mount.
 
 Mounting the filesystem by itself is not very useful. To actually use the 
 files and programs installed in that partition you have to log in as a known
-user, or `chroot` into the system.
+user, or ["chroot"](https://wiki.archlinux.org/index.php/Chroot) into the system.
 
 ## chroot
 
 Now that the filesystem is mounted at `/mnt` (or wherever you want), you can 
-`chroot` like this:
+chroot like this:
 
 ```
 arch-chroot /mnt
