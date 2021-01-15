@@ -83,8 +83,9 @@ class ObservableInputStream(private val wrapped: InputStream,
     @Throws(IOException::class)
     override fun read(): Int {
         val res = wrapped.read()
-        if (res > -1)
-          bytesRead++
+        if (res > -1) {
+            bytesRead++
+        }
         onBytesRead(bytesRead)
         return res
     }
@@ -92,16 +93,20 @@ class ObservableInputStream(private val wrapped: InputStream,
     @Throws(IOException::class)
     override fun read(b: ByteArray): Int {
         val res = wrapped.read(b)
-        bytesRead += res
-        onBytesRead(bytesRead)
+        if (res > -1) {
+            bytesRead += res
+            onBytesRead(bytesRead)
+        }
         return res
     }
 
     @Throws(IOException::class)
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         val res = wrapped.read(b, off, len)
-        bytesRead += res
-        onBytesRead(bytesRead)
+        if (res > -1) {
+            bytesRead += res
+            onBytesRead(bytesRead)
+        }
         return res
     }
 
@@ -147,6 +152,9 @@ class ObservableOutputStream(private val wrapped: OutputStream,
     }
 }
 ```
+
+**EDIT 2021-01-14:** A [minor bug](https://github.com/GAumala/blog/issues/12) 
+in `ObservableInputStream` has been fixed.
 
 To use this, wrap the original stream with one of these classes, attaching a 
 lambda function to execute every time the number of processed bytes increases.
