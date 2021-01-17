@@ -20,7 +20,7 @@ function build_site() {
   mkdir -p ../static/js
   cp ./output/js/* ../static/js
 
-  # run Hakyll through stack
+  # return to static/ dir run Hakyll through stack
   cd -
   stack build
   stack exec site build
@@ -28,9 +28,12 @@ function build_site() {
 }
 
 function deploy() {
-  # copy outputs to server branch
+  # go to project root and switch to server branch
+  cd ..
   git checkout server
   git pull origin server
+
+  # replace existing files with new output
   rm -rf _site
   mv "$outputDir/_site" . 
   # bring source files that should also be deployed
