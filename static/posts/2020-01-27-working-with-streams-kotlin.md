@@ -156,6 +156,12 @@ class ObservableOutputStream(private val wrapped: OutputStream,
 **EDIT 2021-01-14:** A [minor bug](https://github.com/GAumala/blog/issues/12) 
 in `ObservableInputStream` has been fixed.
 
+**EDIT 2021-01-17:** [It has been brought to my attention](
+https://github.com/GAumala/blog/issues/13) that Java 9 introduces new 
+`InputStream` methods `readNBytes()` and `readAllBytes()`. If you target 
+Java 9 or later then you should override these methods as well to update the
+read bytes counter appropriately, otherwise you may end up with mysterious bugs. 
+
 To use this, wrap the original stream with one of these classes, attaching a 
 lambda function to execute every time the number of processed bytes increases.
 For example here's how you could report progress while downloading a file via 
