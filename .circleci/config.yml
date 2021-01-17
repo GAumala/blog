@@ -52,11 +52,3 @@ jobs:
           name: Build Static Site Generator
           working_directory: './static'
           command: stack build 
-      - run:
-          name: Generate Pages
-          working_directory: './static'
-          command: stack exec site build
-      - run:
-          name: Deploy 
-          command: bash .circleci/push_to_server.sh
-      

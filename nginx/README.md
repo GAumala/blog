@@ -18,3 +18,13 @@ gzip on;
 gzip_min_length 1000;
 gzip_types      application/json application/xml image/svg+xml text/css text/plain;
 ```
+
+To build the actual config files, run the following script in the server:
+
+``` bash
+port="<PORT NUMBER>"
+site_path="<PATH TO STATIC PAGES>"
+ci_secret="<A RANDOM STRING>"
+m4 -DAPI_PORT=$port -DSITE_PATH=$site_path -DCI_SECRET=$ci_secret ./server.m4 > ./server.conf
+m4 ./http.m4 > ./http.conf
+```
