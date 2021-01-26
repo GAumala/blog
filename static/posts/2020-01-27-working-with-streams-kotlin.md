@@ -111,6 +111,34 @@ class ObservableInputStream(private val wrapped: InputStream,
     }
 
     @Throws(IOException::class)
+    override fun skip(n: Long): Long {
+        val res = wrapped.skip(n)
+        if (res > -1) {
+            bytesRead += res
+            onBytesRead(bytesRead)
+        }
+        return res
+    }
+
+    @Throws(IOException::class)
+    override fun available(): Int {
+        return wrapped.available()
+    }
+
+    override fun markSupported(): Boolean {
+        return wrapped.markSupported()
+    }
+
+    override fun mark(readlimit: Int) {
+        wrapped.mark(readlimit)
+    }
+
+    @Throws(IOException::class)
+    override fun reset() {
+        wrapped.reset()
+    }
+
+    @Throws(IOException::class)
     override fun close() {
         wrapped.close()
     }
@@ -156,11 +184,14 @@ class ObservableOutputStream(private val wrapped: OutputStream,
 **EDIT 2021-01-14:** A [minor bug](https://github.com/GAumala/blog/issues/12) 
 in `ObservableInputStream` has been fixed.
 
-**EDIT 2021-01-17:** [It has been brought to my attention](
-https://github.com/GAumala/blog/issues/13) that Java 9 introduces new 
-`InputStream` methods `readNBytes()` and `readAllBytes()`. If you target 
-Java 9 or later then you should override these methods as well to update the
-read bytes counter appropriately, otherwise you may end up with mysterious bugs. 
+**EDIT 2021-01-25:** [It has been brought to my attention](
+https://github.com/GAumala/blog/issues/13) that not all `InputStream` methods 
+were originally implemented in this snippet and this could cause problems. 
+Methods `available()`, `mark()`, `markSupported()`, `skip()`, and `reset()` 
+have now been added. Also, Java 9 introduces new  `InputStream` methods 
+`readNBytes()` and `readAllBytes()`. If you target Java 9 or later then you 
+should override these methods as well to update the read bytes counter 
+appropriately, otherwise you may end up with mysterious bugs. 
 
 To use this, wrap the original stream with one of these classes, attaching a 
 lambda function to execute every time the number of processed bytes increases.
