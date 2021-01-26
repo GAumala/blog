@@ -91,48 +91,76 @@
 <a class="sourceLine" id="cb2-33" data-line-number="33">    }</a>
 <a class="sourceLine" id="cb2-34" data-line-number="34"></a>
 <a class="sourceLine" id="cb2-35" data-line-number="35">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-36" data-line-number="36">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
-<a class="sourceLine" id="cb2-37" data-line-number="37">        wrapped.close()</a>
-<a class="sourceLine" id="cb2-38" data-line-number="38">    }</a>
-<a class="sourceLine" id="cb2-39" data-line-number="39">}</a>
-<a class="sourceLine" id="cb2-40" data-line-number="40"></a>
-<a class="sourceLine" id="cb2-41" data-line-number="41"><span class="kw">class</span> ObservableOutputStream(<span class="kw">private</span> <span class="kw">val</span> <span class="va">wrapped</span>: <span class="dt">OutputStream</span>,</a>
-<a class="sourceLine" id="cb2-42" data-line-number="42">                           <span class="kw">private</span> <span class="kw">val</span> <span class="va">onBytesWritten</span>: (<span class="dt">Long</span>) -&gt; <span class="dt">Unit</span>): <span class="dt">OutputStream</span>() {</a>
-<a class="sourceLine" id="cb2-43" data-line-number="43">    <span class="kw">private</span> <span class="kw">var</span> <span class="va">bytesWritten</span>: <span class="kw">Long</span> = <span class="dv">0</span></a>
+<a class="sourceLine" id="cb2-36" data-line-number="36">    <span class="kw">override</span> <span class="kw">fun</span> skip(<span class="va">n</span>: <span class="dt">Long</span>): <span class="dt">Long</span> {</a>
+<a class="sourceLine" id="cb2-37" data-line-number="37">        <span class="kw">val</span> <span class="va">res</span> = wrapped.skip(n)</a>
+<a class="sourceLine" id="cb2-38" data-line-number="38">        <span class="cf">if</span> (res &gt; <span class="dv">-1</span>) {</a>
+<a class="sourceLine" id="cb2-39" data-line-number="39">            bytesRead += res</a>
+<a class="sourceLine" id="cb2-40" data-line-number="40">            onBytesRead(bytesRead)</a>
+<a class="sourceLine" id="cb2-41" data-line-number="41">        }</a>
+<a class="sourceLine" id="cb2-42" data-line-number="42">        <span class="kw">return</span> res</a>
+<a class="sourceLine" id="cb2-43" data-line-number="43">    }</a>
 <a class="sourceLine" id="cb2-44" data-line-number="44"></a>
 <a class="sourceLine" id="cb2-45" data-line-number="45">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-46" data-line-number="46">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">Int</span>) {</a>
-<a class="sourceLine" id="cb2-47" data-line-number="47">        wrapped.write(b)</a>
-<a class="sourceLine" id="cb2-48" data-line-number="48">        bytesWritten++</a>
-<a class="sourceLine" id="cb2-49" data-line-number="49">        onBytesWritten(bytesWritten)</a>
-<a class="sourceLine" id="cb2-50" data-line-number="50">    }</a>
-<a class="sourceLine" id="cb2-51" data-line-number="51"></a>
-<a class="sourceLine" id="cb2-52" data-line-number="52">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-53" data-line-number="53">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>) {</a>
-<a class="sourceLine" id="cb2-54" data-line-number="54">        wrapped.write(b)</a>
-<a class="sourceLine" id="cb2-55" data-line-number="55">        bytesWritten += b.size.toLong()</a>
-<a class="sourceLine" id="cb2-56" data-line-number="56">        onBytesWritten(bytesWritten)</a>
-<a class="sourceLine" id="cb2-57" data-line-number="57">    }</a>
-<a class="sourceLine" id="cb2-58" data-line-number="58"></a>
-<a class="sourceLine" id="cb2-59" data-line-number="59">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-60" data-line-number="60">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>, <span class="va">off</span>: <span class="dt">Int</span>, <span class="va">len</span>: <span class="dt">Int</span>) {</a>
-<a class="sourceLine" id="cb2-61" data-line-number="61">        wrapped.write(b, off, len)</a>
-<a class="sourceLine" id="cb2-62" data-line-number="62">        bytesWritten += len.toLong()</a>
-<a class="sourceLine" id="cb2-63" data-line-number="63">        onBytesWritten(bytesWritten)</a>
-<a class="sourceLine" id="cb2-64" data-line-number="64">    }</a>
-<a class="sourceLine" id="cb2-65" data-line-number="65"></a>
-<a class="sourceLine" id="cb2-66" data-line-number="66">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-67" data-line-number="67">    <span class="kw">override</span> <span class="kw">fun</span> flush() {</a>
-<a class="sourceLine" id="cb2-68" data-line-number="68">        wrapped.flush()</a>
-<a class="sourceLine" id="cb2-69" data-line-number="69">    }</a>
-<a class="sourceLine" id="cb2-70" data-line-number="70"></a>
-<a class="sourceLine" id="cb2-71" data-line-number="71">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
-<a class="sourceLine" id="cb2-72" data-line-number="72">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
-<a class="sourceLine" id="cb2-73" data-line-number="73">        wrapped.close()</a>
-<a class="sourceLine" id="cb2-74" data-line-number="74">    }</a>
-<a class="sourceLine" id="cb2-75" data-line-number="75">}</a></code></pre></div>
+<a class="sourceLine" id="cb2-46" data-line-number="46">    <span class="kw">override</span> <span class="kw">fun</span> available(): <span class="dt">Int</span> {</a>
+<a class="sourceLine" id="cb2-47" data-line-number="47">        <span class="kw">return</span> wrapped.available()</a>
+<a class="sourceLine" id="cb2-48" data-line-number="48">    }</a>
+<a class="sourceLine" id="cb2-49" data-line-number="49"></a>
+<a class="sourceLine" id="cb2-50" data-line-number="50">    <span class="kw">override</span> <span class="kw">fun</span> <span class="fu">markSupported</span>(): <span class="dt">Boolean</span> {</a>
+<a class="sourceLine" id="cb2-51" data-line-number="51">        <span class="kw">return</span> wrapped.markSupported()</a>
+<a class="sourceLine" id="cb2-52" data-line-number="52">    }</a>
+<a class="sourceLine" id="cb2-53" data-line-number="53"></a>
+<a class="sourceLine" id="cb2-54" data-line-number="54">    <span class="kw">override</span> <span class="kw">fun</span> <span class="fu">mark</span>(<span class="va">readlimit</span>: <span class="dt">Int</span>) {</a>
+<a class="sourceLine" id="cb2-55" data-line-number="55">        wrapped.mark(readlimit)</a>
+<a class="sourceLine" id="cb2-56" data-line-number="56">    }</a>
+<a class="sourceLine" id="cb2-57" data-line-number="57"></a>
+<a class="sourceLine" id="cb2-58" data-line-number="58">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-59" data-line-number="59">    <span class="kw">override</span> <span class="kw">fun</span> reset() {</a>
+<a class="sourceLine" id="cb2-60" data-line-number="60">        wrapped.reset()</a>
+<a class="sourceLine" id="cb2-61" data-line-number="61">    }</a>
+<a class="sourceLine" id="cb2-62" data-line-number="62"></a>
+<a class="sourceLine" id="cb2-63" data-line-number="63">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-64" data-line-number="64">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
+<a class="sourceLine" id="cb2-65" data-line-number="65">        wrapped.close()</a>
+<a class="sourceLine" id="cb2-66" data-line-number="66">    }</a>
+<a class="sourceLine" id="cb2-67" data-line-number="67">}</a>
+<a class="sourceLine" id="cb2-68" data-line-number="68"></a>
+<a class="sourceLine" id="cb2-69" data-line-number="69"><span class="kw">class</span> ObservableOutputStream(<span class="kw">private</span> <span class="kw">val</span> <span class="va">wrapped</span>: <span class="dt">OutputStream</span>,</a>
+<a class="sourceLine" id="cb2-70" data-line-number="70">                           <span class="kw">private</span> <span class="kw">val</span> <span class="va">onBytesWritten</span>: (<span class="dt">Long</span>) -&gt; <span class="dt">Unit</span>): <span class="dt">OutputStream</span>() {</a>
+<a class="sourceLine" id="cb2-71" data-line-number="71">    <span class="kw">private</span> <span class="kw">var</span> <span class="va">bytesWritten</span>: <span class="kw">Long</span> = <span class="dv">0</span></a>
+<a class="sourceLine" id="cb2-72" data-line-number="72"></a>
+<a class="sourceLine" id="cb2-73" data-line-number="73">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-74" data-line-number="74">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">Int</span>) {</a>
+<a class="sourceLine" id="cb2-75" data-line-number="75">        wrapped.write(b)</a>
+<a class="sourceLine" id="cb2-76" data-line-number="76">        bytesWritten++</a>
+<a class="sourceLine" id="cb2-77" data-line-number="77">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-78" data-line-number="78">    }</a>
+<a class="sourceLine" id="cb2-79" data-line-number="79"></a>
+<a class="sourceLine" id="cb2-80" data-line-number="80">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-81" data-line-number="81">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>) {</a>
+<a class="sourceLine" id="cb2-82" data-line-number="82">        wrapped.write(b)</a>
+<a class="sourceLine" id="cb2-83" data-line-number="83">        bytesWritten += b.size.toLong()</a>
+<a class="sourceLine" id="cb2-84" data-line-number="84">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-85" data-line-number="85">    }</a>
+<a class="sourceLine" id="cb2-86" data-line-number="86"></a>
+<a class="sourceLine" id="cb2-87" data-line-number="87">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-88" data-line-number="88">    <span class="kw">override</span> <span class="kw">fun</span> write(<span class="va">b</span>: <span class="dt">ByteArray</span>, <span class="va">off</span>: <span class="dt">Int</span>, <span class="va">len</span>: <span class="dt">Int</span>) {</a>
+<a class="sourceLine" id="cb2-89" data-line-number="89">        wrapped.write(b, off, len)</a>
+<a class="sourceLine" id="cb2-90" data-line-number="90">        bytesWritten += len.toLong()</a>
+<a class="sourceLine" id="cb2-91" data-line-number="91">        onBytesWritten(bytesWritten)</a>
+<a class="sourceLine" id="cb2-92" data-line-number="92">    }</a>
+<a class="sourceLine" id="cb2-93" data-line-number="93"></a>
+<a class="sourceLine" id="cb2-94" data-line-number="94">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-95" data-line-number="95">    <span class="kw">override</span> <span class="kw">fun</span> flush() {</a>
+<a class="sourceLine" id="cb2-96" data-line-number="96">        wrapped.flush()</a>
+<a class="sourceLine" id="cb2-97" data-line-number="97">    }</a>
+<a class="sourceLine" id="cb2-98" data-line-number="98"></a>
+<a class="sourceLine" id="cb2-99" data-line-number="99">    <span class="at">@Throws</span>(IOException::<span class="kw">class</span>)</a>
+<a class="sourceLine" id="cb2-100" data-line-number="100">    <span class="kw">override</span> <span class="kw">fun</span> close() {</a>
+<a class="sourceLine" id="cb2-101" data-line-number="101">        wrapped.close()</a>
+<a class="sourceLine" id="cb2-102" data-line-number="102">    }</a>
+<a class="sourceLine" id="cb2-103" data-line-number="103">}</a></code></pre></div>
 <p><strong>EDIT 2021-01-14:</strong> A <a href="https://github.com/GAumala/blog/issues/12">minor bug</a> in <code>ObservableInputStream</code> has been fixed.</p>
-<p><strong>EDIT 2021-01-17:</strong> <a href="https://github.com/GAumala/blog/issues/13">It has been brought to my attention</a> that Java 9 introduces new <code>InputStream</code> methods <code>readNBytes()</code> and <code>readAllBytes()</code>. If you target Java 9 or later then you should override these methods as well to update the read bytes counter appropriately, otherwise you may end up with mysterious bugs.</p>
+<p><strong>EDIT 2021-01-25:</strong> <a href="https://github.com/GAumala/blog/issues/13">It has been brought to my attention</a> that not all <code>InputStream</code> methods were originally implemented in this snippet and this could cause problems. Methods <code>available()</code>, <code>mark()</code>, <code>markSupported()</code>, <code>skip()</code>, and <code>reset()</code> have now been added. Also, Java 9 introduces new <code>InputStream</code> methods <code>readNBytes()</code> and <code>readAllBytes()</code>. If you target Java 9 or later then you should override these methods as well to update the read bytes counter appropriately, otherwise you may end up with mysterious bugs.</p>
 <p>To use this, wrap the original stream with one of these classes, attaching a lambda function to execute every time the number of processed bytes increases. For example here’s how you could report progress while downloading a file via HTTP:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">fun</span> <span class="fu">downloadFileViaHTTP</span>(<span class="va">url</span>: <span class="dt">String</span>, <span class="va">destinationFile</span>: <span class="dt">file</span>) {</a>
 <a class="sourceLine" id="cb3-2" data-line-number="2">    <span class="kw">val</span> <span class="va">urlObj</span> = URL(url)</a>
