@@ -8,8 +8,16 @@
         <name>Gabriel</name>
         <email></email>
     </author>
-    <updated>2020-11-06T00:00:00Z</updated>
+    <updated>2021-12-06T00:00:00Z</updated>
     <entry>
+    <title>Announcing OpenJisho</title>
+    <link href="https://gaumala.com/posts/2021-12-06-announcing-openjisho.html" />
+    <id>https://gaumala.com/posts/2021-12-06-announcing-openjisho.html</id>
+    <published>2021-12-06T00:00:00Z</published>
+    <updated>2021-12-06T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Announcing a Japanese dictionary Android app]]></summary>
+</entry>
+<entry>
     <title>Arch Linux won't boot, now what?</title>
     <link href="https://gaumala.com/posts/2020-11-06-arch-linux-wont-boot-now-what.html" />
     <id>https://gaumala.com/posts/2020-11-06-arch-linux-wont-boot-now-what.html</id>
@@ -80,14 +88,6 @@
     <published>2018-09-12T00:00:00Z</published>
     <updated>2018-09-12T00:00:00Z</updated>
     <summary type="html"><![CDATA[Web applications in Haskell with Scotty and Beam]]></summary>
-</entry>
-<entry>
-    <title>Building a Blog Part 1: Generating a static site with Hakyll</title>
-    <link href="https://gaumala.com/posts/2018-09-07-generating-a-static-site-with-hakyll.html" />
-    <id>https://gaumala.com/posts/2018-09-07-generating-a-static-site-with-hakyll.html</id>
-    <published>2018-09-07T00:00:00Z</published>
-    <updated>2018-09-07T00:00:00Z</updated>
-    <summary type="html"><![CDATA[Static sites with Haskell using the Hakyll library]]></summary>
 </entry>
 
 </feed>
