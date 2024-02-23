@@ -37,7 +37,7 @@ function deploy() {
   rm -rf _site
   mv "$outputDir/_site" . 
   # bring source files that should also be deployed
-  git checkout master -- .circleci/config.yml .gitignore nginx api 
+  git checkout master -- .gitignore nginx api 
 
 # only push to server if something did change
   if [[ `git status --porcelain` ]]; then
