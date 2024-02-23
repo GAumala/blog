@@ -20,13 +20,8 @@ function build_site() {
   mkdir -p ../static/js
   cp ./output/js/* ../static/js
 
-  # return to static/ dir
+  # return to static/ dir run Hakyll through stack
   cd -
-  
-  # copy api-exe
-  cp ../api/output/api-exe $outputDir
-
-  # run Hakyll through stack
   stack build
   stack exec site build
   mv _site $outputDir
@@ -39,11 +34,10 @@ function deploy() {
   git pull origin server
 
   # replace existing files with new output
-  rm -rf _site api-exe
+  rm -rf _site
   mv "$outputDir/_site" . 
-  mv "$outputDir/api-exe" . 
   # bring source files that should also be deployed
-  git checkout master -- .gitignore nginx
+  git checkout master -- .gitignore nginx api 
 
 # only push to server if something did change
   if [[ `git status --porcelain` ]]; then
