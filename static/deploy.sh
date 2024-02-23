@@ -12,7 +12,16 @@ cd "$(dirname "$0")"
 git checkout master
 
 function build_site() {
-  #run Hakyll through stack
+  # first build frontend js
+  cd ../frontend/
+  yarn
+  yarn build
+  # now copy output to static/js
+  mkdir -p ../static/js
+  cp ./output/js/* ../static/js
+
+  # return to static/ dir run Hakyll through stack
+  cd -
   stack build
   stack exec site build
   mv _site $outputDir
