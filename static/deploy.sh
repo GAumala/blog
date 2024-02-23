@@ -14,8 +14,8 @@ git checkout master
 function build_site() {
   # first build frontend js
   cd ../frontend/
-  yarn
-  yarn build
+  npm install
+  npm run build
   # now copy output to static/js
   mkdir -p ../static/js
   cp ./output/js/* ../static/js
