@@ -1,0 +1,1 @@
+(()=>{"use strict";const e="/css/font-faces.css";document.body.onload=()=>{(()=>{const t=new XMLHttpRequest;t.open("GET",e,!0),t.onreadystatechange=function(){4==t.readyState&&200==t.status&&(()=>{const t=document.createElement("link");t.rel="stylesheet",t.href=e,document.head.appendChild(t)})()},t.send()})()}})();
