@@ -19,12 +19,6 @@ location /blogapi/likes {
         proxy_cache_valid 200 10s;
 }
 
-location = /ci/CI_SECRET {
-        rewrite ^ /ci-hook break;
-
-        proxy_pass http://localhost:API_PORT;
-}
-
 location /assets {
         add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri $uri/ =404;
