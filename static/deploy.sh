@@ -44,6 +44,7 @@ function deploy() {
     git add .
     git commit -m "deploy at $deployTime"
     git push origin server
+    git push prod master
   else
     echo "No changes to deploy. Bye!"
   fi
