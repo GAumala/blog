@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="keywords" content="Android,Biometric,Cryptography,Fingerprint">
+    <meta name="description" content="Secure authentication on Android with the new Biometric library" />
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:description" content="Secure authentication on Android with the new Biometric library">
+    <meta property="og:locale" content="es_US">
+    <meta property="og:title" content="Biometric authentication on Android">
+    <meta property="og:description" content="Secure authentication on Android with the new Biometric library">
+    <title>Biometric authentication on Android</title>
+    <link rel="stylesheet" href="../css/post-bundle.css" />
+  </head>
+  <body>
+    <header>
+      <nav>
+        <a href="../" title="Home">
+          <img id="home" src="../assets/images/home.svg" alt="Home"></a>
+        <a href="../rss/posts.rss" title="RSS feed">
+          <img class="icon-rss" src="../assets/images/rss.svg" alt="RSS"></a>
+        <a href="https://twitter.com/gaumala987" title="Twitter profile">
+          <img class="icon" src="../assets/images/twitter.svg" alt="Twitter"></a>
+        <a href="https://github.com/GAumala" title="GitHub profile">
+          <img class="icon" src="../assets/images/github.svg" alt="GitHub"></a>
+      </nav>
+    </header>
+
+    <h1 class="post-title">Biometric authentication on Android</h1>
+    <div class="date"><span>February 22, 2024</span></div>
+    <article>
+      <section>
+        <p>I recently tried out Biometric authentication on Android using the new <a href="https://developer.android.com/reference/androidx/biometric/package-summary">Biometric library</a>. The new API is really good. The OS now provides a dialog for biometric authentication, making things smoother and more consistent for users. Google even has <a href="https://developer.android.com/training/sign-in/biometric-auth">this neat guide</a> to help get you started with it. Unfortunately it is a bit lackluster, it was not clear to me how to get the whole thing running correctly. I wanted to expand on it and write a better guide on how to store a key for encryption/decryption on the Android keystore and retrieve it using the user’s fingerprint.</p>
+<!--more-->
+<p>The use case I have in mind is the user login. My goal is to provide an alternative to the username/password form with a biometric dialog. After the user’s first successful log in, I’ll encrypt the user’s password and keep it my app’s local storage. The key for encryption/decryption will be stored in the Android keystore and will require biometric authentication for access.</p>
+<h3 id="installation">Installation</h3>
+<p>To use the new library we have to include this line in the app’s build.gradle <code>dependencies</code> block:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="co">// 1.1.0 is the latest stable version at the time of writing</span></a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">implementation(<span class="st">&quot;androidx.biometric:biometric:1.1.0&quot;</span>)</a></code></pre></div>
+<h3 id="check-that-biometric-authentication-is-available">Check that biometric authentication is available</h3>
+<p>Although the new library supports up to API 23, not all devices actually have biometric features. Before attempting anything, we must check if biometric authentication is available using <code>BiometricManager.canAuthenticate()</code>:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb2-1" data-line-number="1"><span class="kw">val</span> <span class="va">biometricManager</span> = BiometricManager.from(context)</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2"><span class="kw">return</span> <span class="cf">when</span> (<span class="kw">val</span> <span class="va">result</span> =</a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">    biometricManager.canAuthenticate(BIOMETRIC_STRONG)) {</a>
+<a class="sourceLine" id="cb2-4" data-line-number="4">    BiometricManager.BIOMETRIC_SUCCESS -&gt; </a>
+<a class="sourceLine" id="cb2-5" data-line-number="5">        <span class="al">TODO(&quot;start biometric authentication&quot;)</span></a>
+<a class="sourceLine" id="cb2-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb2-7" data-line-number="7">    BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -&gt; {</a>
+<a class="sourceLine" id="cb2-8" data-line-number="8">        <span class="al">TODO(&quot;take user to biometric enrollment&quot;)</span></a>
+<a class="sourceLine" id="cb2-9" data-line-number="9">    }</a>
+<a class="sourceLine" id="cb2-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb2-11" data-line-number="11">    <span class="cf">else</span> -&gt; <span class="al">TODO(&quot;biometric authentication not available. Show error message or skip&quot;)</span></a>
+<a class="sourceLine" id="cb2-12" data-line-number="12">}</a></code></pre></div>
+<p>We pass the <a href="https://developer.android.com/reference/androidx/biometric/BiometricManager.Authenticators#BIOMETRIC_STRONG()"><code>BIOMETRIC_STRONG</code></a> flag because fingerprint is considered strong authentication. The keystore does not allow weak authentication for accessing keys.</p>
+<p>This method returns different status codes that we have to handle. If the result is <code>BIOMETRIC_SUCCESS</code>, we are good to go. If the result is <code>BIOMETRIC_ERROR_NONE_ENROLLED</code>, the user needs to enroll a fingerprint on system settings. You can launch an activity for that, but it’s only available on API 30:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb3-1" data-line-number="1"><span class="kw">val</span> <span class="va">intent</span> = Intent(Settings.ACTION_BIOMETRIC_ENROLL).apply {</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">    putExtra(</a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">        Settings.EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED,</a>
+<a class="sourceLine" id="cb3-4" data-line-number="4">        BIOMETRIC_STRONG</a>
+<a class="sourceLine" id="cb3-5" data-line-number="5">    )</a>
+<a class="sourceLine" id="cb3-6" data-line-number="6">}</a>
+<a class="sourceLine" id="cb3-7" data-line-number="7">startActivity(intent)</a></code></pre></div>
+<h3 id="generate-a-secret-key-in-the-android-keystore">Generate a secret key in the Android keystore</h3>
+<p>Once we have determined the user’s device is ready for biometric authentication, we need to generate a secret key for encryption/decryption. To create it on the Android keystore, we need an instance of <a href="https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec"><code>KeyGenParameterSpec</code>:</a></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb4-1" data-line-number="1">const <span class="kw">val</span> <span class="va">KEY_SIZE</span> = <span class="dv">256</span></a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">const <span class="kw">val</span> <span class="va">SECRET_KEY_NAME</span> = <span class="st">&quot;mySecretKeyName&quot;</span></a>
+<a class="sourceLine" id="cb4-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">KeyGenParameterSpec.Builder(</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">    SECRET_KEY_NAME,</a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">)</a>
+<a class="sourceLine" id="cb4-8" data-line-number="8">    .setKeySize(KEY_SIZE)</a>
+<a class="sourceLine" id="cb4-9" data-line-number="9">    .setBlockModes(KeyProperties.BLOCK_MODE_CBC)</a>
+<a class="sourceLine" id="cb4-10" data-line-number="10">    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)</a>
+<a class="sourceLine" id="cb4-11" data-line-number="11">    .setUserAuthenticationRequired(<span class="kw">true</span>)</a>
+<a class="sourceLine" id="cb4-12" data-line-number="12">    .build()</a></code></pre></div>
+<p>This builder object defines the following things about our key:</p>
+<ul>
+<li>It can encrypt and decrypt.</li>
+<li>Its size is 256 bytes.</li>
+<li>It uses <a href="https://en.wikipedia.org/wiki/Block_cipher_mode_of_operation">Cipher Block Chaining (CBC)</a> block mode.</li>
+<li>It uses <a href="https://node-security.com/posts/cryptography-pkcs-7-padding/">PKCS7</a> encryption padding scheme.</li>
+<li>Requires user authentication for access. (This is essential for biometric authentication)</li>
+</ul>
+<p>Then you can use <a href="https://developer.android.com/reference/kotlin/javax/crypto/KeyGenerator.html?hl=en"><code>KeyGenerator</code></a> to generate it:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb5-1" data-line-number="1"><span class="kw">val</span> <span class="va">keyGenerator</span> = KeyGenerator.getInstance(</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">    KeyProperties.KEY_ALGORITHM_AES, <span class="st">&quot;AndroidKeyStore&quot;</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">)</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">keyGenerator.init(keyGenParameterSpec)</a>
+<a class="sourceLine" id="cb5-5" data-line-number="5">keyGenerator.generateKey()</a></code></pre></div>
+<h3 id="encrypt-the-user-password-with-the-new-key">Encrypt the user password with the new key</h3>
+<p>Now that the key is ready, we can use it to create a <a href="https://developer.android.com/reference/kotlin/javax/crypto/Cipher?hl=en"><code>Cipher</code></a> object that can encrypt the user password with <a href="https://en.wikipedia.org/wiki/Advanced_Encryption_Standard">AES</a>. Passwords should never be stored as plain text. We should wait until the user authenticates with their password, grab it, and then create our cipher:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb6-1" data-line-number="1">const <span class="kw">val</span> <span class="va">SECRET_KEY_NAME</span> = <span class="st">&quot;mySecretKeyName&quot;</span></a>
+<a class="sourceLine" id="cb6-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb6-3" data-line-number="3"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">getSecretKey</span>(): <span class="dt">SecretKey</span> {</a>
+<a class="sourceLine" id="cb6-4" data-line-number="4">    <span class="kw">val</span> <span class="va">keyStore</span> = KeyStore.getInstance(<span class="st">&quot;AndroidKeyStore&quot;</span>)</a>
+<a class="sourceLine" id="cb6-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb6-6" data-line-number="6">    <span class="co">// Before the keystore can be accessed, it must be loaded.</span></a>
+<a class="sourceLine" id="cb6-7" data-line-number="7">    keyStore.load(<span class="kw">null</span>)</a>
+<a class="sourceLine" id="cb6-8" data-line-number="8">    <span class="kw">return</span> keyStore.getKey(SECRET_KEY_NAME, <span class="kw">null</span>) <span class="kw">as</span> SecretKey</a>
+<a class="sourceLine" id="cb6-9" data-line-number="9">}</a>
+<a class="sourceLine" id="cb6-10" data-line-number="10"></a>
+<a class="sourceLine" id="cb6-11" data-line-number="11"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">getCipher</span>(): <span class="dt">Cipher</span> {</a>
+<a class="sourceLine" id="cb6-12" data-line-number="12">    <span class="kw">return</span> Cipher.getInstance(</a>
+<a class="sourceLine" id="cb6-13" data-line-number="13">        KeyProperties.KEY_ALGORITHM_AES + <span class="st">&quot;/&quot;</span></a>
+<a class="sourceLine" id="cb6-14" data-line-number="14">                + KeyProperties.BLOCK_MODE_CBC + <span class="st">&quot;/&quot;</span></a>
+<a class="sourceLine" id="cb6-15" data-line-number="15">                + KeyProperties.ENCRYPTION_PADDING_PKCS7</a>
+<a class="sourceLine" id="cb6-16" data-line-number="16">    )</a>
+<a class="sourceLine" id="cb6-17" data-line-number="17">}</a>
+<a class="sourceLine" id="cb6-18" data-line-number="18"></a>
+<a class="sourceLine" id="cb6-19" data-line-number="19"><span class="kw">val</span> <span class="va">cipher</span> = getCipher()</a>
+<a class="sourceLine" id="cb6-20" data-line-number="20"><span class="kw">val</span> <span class="va">secretKey</span> = getSecretKey(secretKeyName)</a>
+<a class="sourceLine" id="cb6-21" data-line-number="21">cipher.init(Cipher.ENCRYPT_MODE, secretKey)</a></code></pre></div>
+<p>Please note that this cipher wont work until the user authenticates. Remember that <code>.setUserAuthenticationRequired(true)</code> in the <code>KeyGenParameterSpec</code> builder? We have to pass the cipher to <code>BiometricPrompt</code> so that we can use it after the user authenticates with their fingerprint.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb7-1" data-line-number="1"><span class="kw">val</span> <span class="va">executor</span> = ContextCompat.getMainExecutor(activity)</a>
+<a class="sourceLine" id="cb7-2" data-line-number="2"></a>
+<a class="sourceLine" id="cb7-3" data-line-number="3"><span class="kw">val</span> <span class="va">biometricPrompt</span> = BiometricPrompt(activity, executor,</a>
+<a class="sourceLine" id="cb7-4" data-line-number="4">    <span class="kw">object</span> : <span class="dt">BiometricPrompt</span>.<span class="dt">AuthenticationCallback</span>() {</a>
+<a class="sourceLine" id="cb7-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb7-6" data-line-number="6">        <span class="kw">override</span> <span class="kw">fun</span> <span class="fu">onAuthenticationFailed</span>() {</a>
+<a class="sourceLine" id="cb7-7" data-line-number="7">        }</a>
+<a class="sourceLine" id="cb7-8" data-line-number="8"></a>
+<a class="sourceLine" id="cb7-9" data-line-number="9">        <span class="kw">override</span> <span class="kw">fun</span> <span class="fu">onAuthenticationError</span>(</a>
+<a class="sourceLine" id="cb7-10" data-line-number="10">            <span class="va">errorCode</span>: <span class="dt">Int</span>,</a>
+<a class="sourceLine" id="cb7-11" data-line-number="11">            <span class="va">errString</span>: <span class="dt">CharSequence</span></a>
+<a class="sourceLine" id="cb7-12" data-line-number="12">        ) {</a>
+<a class="sourceLine" id="cb7-13" data-line-number="13">            handleError(errorCode, errString)</a>
+<a class="sourceLine" id="cb7-14" data-line-number="14">            Toast.makeText(this<span class="at">@MainActivity</span>, errString, Toast.LENGTH_LONG).show()</a>
+<a class="sourceLine" id="cb7-15" data-line-number="15">            <span class="al">TODO(&quot;exit to next screen&quot;)</span></a>
+<a class="sourceLine" id="cb7-16" data-line-number="16">        }</a>
+<a class="sourceLine" id="cb7-17" data-line-number="17"></a>
+<a class="sourceLine" id="cb7-18" data-line-number="18">        <span class="kw">override</span> <span class="kw">fun</span> <span class="fu">onAuthenticationSucceeded</span>(</a>
+<a class="sourceLine" id="cb7-19" data-line-number="19">            <span class="va">result</span>: <span class="dt">BiometricPrompt</span>.<span class="va">AuthenticationResult</span></a>
+<a class="sourceLine" id="cb7-20" data-line-number="20">        ) {</a>
+<a class="sourceLine" id="cb7-21" data-line-number="21">            <span class="co">// cryptoObject cannot be null because we</span></a>
+<a class="sourceLine" id="cb7-22" data-line-number="22">            <span class="co">// explicitly pass it on authenticate()</span></a>
+<a class="sourceLine" id="cb7-23" data-line-number="23">            <span class="kw">val</span> <span class="va">resultCipher</span> = result.cryptoObject!!.cipher</a>
+<a class="sourceLine" id="cb7-24" data-line-number="24">            encryptAndPersistPassword(resultCipher, password)</a>
+<a class="sourceLine" id="cb7-25" data-line-number="25">            <span class="al">TODO(&quot;exit to next screen&quot;)</span></a>
+<a class="sourceLine" id="cb7-26" data-line-number="26">        }</a>
+<a class="sourceLine" id="cb7-27" data-line-number="27"></a>
+<a class="sourceLine" id="cb7-28" data-line-number="28">    })</a>
+<a class="sourceLine" id="cb7-29" data-line-number="29"></a>
+<a class="sourceLine" id="cb7-30" data-line-number="30"><span class="kw">val</span> <span class="va">promptInfo</span> = BiometricPrompt.PromptInfo.Builder()</a>
+<a class="sourceLine" id="cb7-31" data-line-number="31">    .setTitle(<span class="st">&quot;Biometric login for my app&quot;</span>)</a>
+<a class="sourceLine" id="cb7-32" data-line-number="32">    .setSubtitle(<span class="st">&quot;Log in using your biometric credential&quot;</span>)</a>
+<a class="sourceLine" id="cb7-33" data-line-number="33">    .setNegativeButtonText(<span class="st">&quot;Use account password&quot;</span>)</a>
+<a class="sourceLine" id="cb7-34" data-line-number="34">    .setAllowedAuthenticators(BIOMETRIC_STRONG)</a>
+<a class="sourceLine" id="cb7-35" data-line-number="35">    .build()</a>
+<a class="sourceLine" id="cb7-36" data-line-number="36"></a>
+<a class="sourceLine" id="cb7-37" data-line-number="37">biometricPrompt.authenticate(</a>
+<a class="sourceLine" id="cb7-38" data-line-number="38">    promptInfo,</a>
+<a class="sourceLine" id="cb7-39" data-line-number="39">    BiometricPrompt.CryptoObject(cipher)</a>
+<a class="sourceLine" id="cb7-40" data-line-number="40">)</a></code></pre></div>
+<p>Here we create a <code>BiometricPrompt</code> object,setting the callbacks for events that occur while the user interacts with the dialog. <code>BiometricPrompt.authenticate()</code> takes a <code>PromptInfo</code> object with the text that we want to display and a <code>CryptoObject</code> with our cipher to show the biometric authentication to the user. Now let’s talk about each callback:</p>
+<p>In the <code>onAuthenticationFailed()</code> callback we don’t really need to do anything. This gets called every time the fingerprint does not match. The dialog shows this error and lets the user retry multiple times before cancelling the operation.</p>
+<p><code>onAuthenticationError()</code> is for errors that cancel the operation. Maybe the user exceeded the maximum number of attempts, or it got cancelled by user action. Most of the time we can just show the error to the user and exit, but there are a few errors that should be handled differently. You can see this in <code>handleError()</code>:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb8-1" data-line-number="1"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">handleError</span>(<span class="va">errorCode</span>: <span class="dt">Int</span>, <span class="va">errString</span>: <span class="dt">String</span>) {</a>
+<a class="sourceLine" id="cb8-2" data-line-number="2">    <span class="cf">if</span> (errorCode == ERROR_NEGATIVE_BUTTON) {</a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">        <span class="co">// User clicked negative button to close the dialog</span></a>
+<a class="sourceLine" id="cb8-4" data-line-number="4">        <span class="al">TODO(&quot;exit to next screen&quot;)</span></a>
+<a class="sourceLine" id="cb8-5" data-line-number="5">        <span class="kw">return</span></a>
+<a class="sourceLine" id="cb8-6" data-line-number="6">    }</a>
+<a class="sourceLine" id="cb8-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb8-8" data-line-number="8">    <span class="cf">if</span> (errorCode == ERROR_USER_CANCELED) {</a>
+<a class="sourceLine" id="cb8-9" data-line-number="9">        <span class="co">// User clicked outside the dialog to close it</span></a>
+<a class="sourceLine" id="cb8-10" data-line-number="10">        <span class="al">TODO(&quot;exit to next screen&quot;)</span></a>
+<a class="sourceLine" id="cb8-11" data-line-number="11">        <span class="kw">return</span></a>
+<a class="sourceLine" id="cb8-12" data-line-number="12">    }</a>
+<a class="sourceLine" id="cb8-13" data-line-number="13"></a>
+<a class="sourceLine" id="cb8-14" data-line-number="14">    <span class="co">// Show the error to the user</span></a>
+<a class="sourceLine" id="cb8-15" data-line-number="15">    Toast.makeText(this<span class="at">@MainActivity</span>, errString, Toast.LENGTH_LONG).show()</a>
+<a class="sourceLine" id="cb8-16" data-line-number="16">    <span class="al">TODO(&quot;exit to next screen&quot;)</span></a>
+<a class="sourceLine" id="cb8-17" data-line-number="17">}</a></code></pre></div>
+<p><code>onAuthenticationSucceeded()</code> is where we get our cipher back with a valid key and encrypt the password. Here’s the implementation of <code>encryptAndPersistPassword()</code>:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb9-1" data-line-number="1"><span class="kw">private</span> <span class="kw">fun</span> <span class="fu">encryptAndPersistPassword</span>(<span class="va">cipher</span>: <span class="dt">Cipher</span>, <span class="va">password</span>: <span class="dt">String</span>) {</a>
+<a class="sourceLine" id="cb9-2" data-line-number="2">    <span class="kw">private</span> <span class="kw">val</span> <span class="va">defaultCharset</span> = Charset.forName(<span class="st">&quot;UTF-8&quot;</span>)</a>
+<a class="sourceLine" id="cb9-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb9-4" data-line-number="4">    <span class="kw">val</span> <span class="va">encryptedBytes</span> = resultCipher.doFinal(</a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">        secret.toByteArray(defaultCharset)</a>
+<a class="sourceLine" id="cb9-6" data-line-number="6">    )</a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">    <span class="kw">val</span> <span class="va">encryptedString</span> = encryptedBytes.toBase64String()</a>
+<a class="sourceLine" id="cb9-8" data-line-number="8">    <span class="kw">val</span> <span class="va">ivString</span> = resultCipher.iv.toBase64String()</a>
+<a class="sourceLine" id="cb9-9" data-line-number="9"></a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">    <span class="al">TODO(&quot;persist encryptedString and ivString&quot;)</span></a>
+<a class="sourceLine" id="cb9-11" data-line-number="11">}</a></code></pre></div>
+<p>After encrypting there are two byte arrays that we need to persist: the password and the <a href="https://en.wikipedia.org/wiki/Initialization_vector">initialization vector (IV)</a>. The cipher won’t be able to decrypt the password unless you provide both. For persisting you could use SQLite or just <a href="https://developer.android.com/training/data-storage/shared-preferences"><code>SharedPreferences</code></a>. It’s far easier to persist strings than byte arrays, so I convert them to <a href="https://en.wikipedia.org/wiki/Base64">Base64</a> strings. These are the extension methods that I use:</p>
+<pre><code>fun ByteArray.toBase64String() = Base64.encodeToString(this, Base64.DEFAULT)
+
+fun String.toBase64ByteArray() = Base64.decode(this, Base64.DEFAULT)</code></pre>
+<h3 id="decrypt-the-user-password">Decrypt the user password</h3>
+<p>The next time the user wants to sign in we can just decrypt the password and instantly authenticate with the server. Once again, we have to create a <code>Cipher</code> object, but this time in <code>DECRYPT_MODE</code> and pass the IV we persisted at the end of the previous section:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb11-1" data-line-number="1"><span class="kw">val</span> <span class="va">cipher</span> = getCipher()</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2"><span class="kw">val</span> <span class="va">secretKey</span> = getSecretKey()</a>
+<a class="sourceLine" id="cb11-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb11-4" data-line-number="4"><span class="kw">val</span> <span class="va">ivArray</span> = ivString.toBase64ByteArray()</a>
+<a class="sourceLine" id="cb11-5" data-line-number="5">cipher.init(Cipher.DECRYPT_MODE, secretKey, IvParameterSpec(ivArray))</a></code></pre></div>
+<p>Then, similar to the previous section, we have to create a <code>BiometricPrompt</code> instance and call <code>authenticate()</code>:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb12-1" data-line-number="1"><span class="kw">val</span> <span class="va">promptInfo</span> = BiometricPrompt.PromptInfo.Builder()</a>
+<a class="sourceLine" id="cb12-2" data-line-number="2">    .setTitle(<span class="st">&quot;Biometric login for my app&quot;</span>)</a>
+<a class="sourceLine" id="cb12-3" data-line-number="3">    .setSubtitle(<span class="st">&quot;Log in using your biometric credential&quot;</span>)</a>
+<a class="sourceLine" id="cb12-4" data-line-number="4">    .setNegativeButtonText(<span class="st">&quot;Use account password&quot;</span>)</a>
+<a class="sourceLine" id="cb12-5" data-line-number="5">    .build()</a>
+<a class="sourceLine" id="cb12-6" data-line-number="6"></a>
+<a class="sourceLine" id="cb12-7" data-line-number="7">biometricPrompt.authenticate(</a>
+<a class="sourceLine" id="cb12-8" data-line-number="8">    promptInfo,</a>
+<a class="sourceLine" id="cb12-9" data-line-number="9">    BiometricPrompt.CryptoObject(cipher)</a>
+<a class="sourceLine" id="cb12-10" data-line-number="10">)</a></code></pre></div>
+<p>The <code>BiometricPrompt</code> callback implementations are pretty similar to last time. Error handling on <code>onAuthenticationError()</code> is bit different because <code>ERROR_NEGATIVE_BUTTON</code> now has to revert the UI to the old username/password form.</p>
+<pre><code>if (errorCode == ERROR_NEGATIVE_BUTTON) {
+    // User clicked negative button to close the dialog
+    TODO(&quot;revert to username/password form&quot;)
+    return
+}
+
+if (errorCode == ERROR_USER_CANCELED) {
+    // User clicked outside the dialog to close it
+    return
+}
+
+// Show the error to the user
+Toast.makeText(this@MainActivity, errString, Toast.LENGTH_LONG).show()
+TODO(&quot;exit to next screen&quot;)</code></pre>
+<p>Finally, the code to decrypt the password on <code>onAuthenticationSucceeded()</code> is very straightforward:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode kotlin"><code class="sourceCode kotlin"><a class="sourceLine" id="cb14-1" data-line-number="1"><span class="kw">val</span> <span class="va">decryptedPassword</span> = resultCipher.doFinal(</a>
+<a class="sourceLine" id="cb14-2" data-line-number="2">    encryptedString.toBase64ByteArray()</a>
+<a class="sourceLine" id="cb14-3" data-line-number="3">)</a>
+<a class="sourceLine" id="cb14-4" data-line-number="4"><span class="al">TODO(&quot;log in with the decrypted password&quot;)</span></a></code></pre></div>
+<p>And that’s it. We now have biometric authentication in our app. The new biometric prompt has great UX. If something goes wrong, the user can always fallback to the username/password form.</p>
+      </section>
+    </article>
+
+    <div class="footer-separator"></div>
+    <div id="like-footer"></div>
+    <script src="../js/post.js"></script>
+  </body>
+</html>

@@ -8,8 +8,16 @@
         <name>Gabriel</name>
         <email></email>
     </author>
-    <updated>2021-12-06T00:00:00Z</updated>
+    <updated>2024-02-22T00:00:00Z</updated>
     <entry>
+    <title>Biometric authentication on Android</title>
+    <link href="https://gaumala.com/posts/2024-02-22-biometric-authentication-in-android.html" />
+    <id>https://gaumala.com/posts/2024-02-22-biometric-authentication-in-android.html</id>
+    <published>2024-02-22T00:00:00Z</published>
+    <updated>2024-02-22T00:00:00Z</updated>
+    <summary type="html"><![CDATA[Secure authentication on Android with the new Biometric library]]></summary>
+</entry>
+<entry>
     <title>Announcing OpenJisho</title>
     <link href="https://gaumala.com/posts/2021-12-06-announcing-openjisho.html" />
     <id>https://gaumala.com/posts/2021-12-06-announcing-openjisho.html</id>
@@ -80,14 +88,6 @@
     <published>2018-09-25T00:00:00Z</published>
     <updated>2018-09-25T00:00:00Z</updated>
     <summary type="html"><![CDATA[Writing a like button with modern front-end development tools like Mithril, Babel and webpack.]]></summary>
-</entry>
-<entry>
-    <title>Building a Blog Part 2: Creating an HTTP API with Scotty and Beam</title>
-    <link href="https://gaumala.com/posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html" />
-    <id>https://gaumala.com/posts/2018-09-12-creating-an-http-api-with-scotty-and-beam.html</id>
-    <published>2018-09-12T00:00:00Z</published>
-    <updated>2018-09-12T00:00:00Z</updated>
-    <summary type="html"><![CDATA[Web applications in Haskell with Scotty and Beam]]></summary>
 </entry>
 
 </feed>
