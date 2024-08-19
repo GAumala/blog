@@ -1,41 +1,41 @@
 @font-face {
   font-family: Merriweather;
-  src: url("../assets/fonts/Merriweather-Light.ttf");
+  src: url("/assets/fonts/Merriweather-Light.ttf");
   font-weight: normal;
   font-display: optional;
 }
 
 @font-face {
   font-family: Merriweather;
-  src: url("../assets/fonts/Merriweather-Bold.ttf");
+  src: url("/assets/fonts/Merriweather-Bold.ttf");
   font-weight: bold;
   font-display: optional;
 }
 
 @font-face {
   font-family: OpenSans;
-  src: url("../assets/fonts/OpenSans-Regular.ttf");
+  src: url("/assets/fonts/OpenSans-Regular.ttf");
   font-weight: normal;
   font-display: optional;
 }
 
 @font-face {
   font-family: OpenSans;
-  src: url("../assets/fonts/OpenSans-Bold.ttf");
+  src: url("/assets/fonts/OpenSans-Bold.ttf");
   font-weight: bold;
   font-display: optional;
 }
 
 @font-face {
   font-family: SourceCodePro;
-  src: url("../assets/fonts/SourceCodePro-Medium.ttf");
+  src: url("/assets/fonts/SourceCodePro-Medium.ttf");
   font-weight: normal;
   font-display: optional;
 }
 
 @font-face {
   font-family: SourceCodePro;
-  src: url("../assets/fonts/SourceCodePro-Bold.ttf");
+  src: url("/assets/fonts/SourceCodePro-Bold.ttf");
   font-weight: bold;
   font-display: optional;
 }
