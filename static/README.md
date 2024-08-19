@@ -34,5 +34,5 @@ To deploy static site use `scp`:
 
 ```
 stack exec site build
-scp _site/* root@gaumala.com:/var/www/html/
+scp -r _site/* root@gaumala.com:/var/www/html/
 ```
