@@ -6,10 +6,10 @@ keywords: Ubuntu,Linux,server,VPS,nginx,ufw,vim
 
 I've been doing a lot of backend development this past few months and all my 
 deployments so far have been with [Digital Ocean droplets](
-https://www.digitalocean.com/products/droplets) running Ubuntu Linux. You can
-get a full Linux box in the cloud for cheap. I think it's pretty cool how much
-you can do with this, so I decided to write a little guide with all of the 
-things that I might want/have to do every time I create a new droplet.
+https://www.digitalocean.com/products/droplets) running Ubuntu Linux. I think
+it's pretty cool how much you can do with a Linux box in the cloud for
+so cheap, so I decided to write a little guide with all of the things that I 
+might want/have to do every time I create a new droplet.
 
 <!--more-->
 
@@ -123,9 +123,9 @@ ssh://gabriel@my-vps.com:/home/gabriel/MyProject.git
 ### Setup OpenVPN
 
 You can use your VPS as a VPN if you install OpenVPN. This is particularly handy
-for me when I want to visit some websites but pretend to be in the U.S. I don't
-recommend using this for Netflix or any other streaming service because your VPS
-probably has a limited bandwith. 
+for me when I'm at airports using public wi-fi. I don't recommend using this for
+Netflix or any other streaming service because your VPS probably has a limited
+bandwith. 
 
 The easiest way to install and setup OpenVPN is with [openvpn-install](
 https://github.com/angristan/openvpn-install) . Just log in as root and run:
