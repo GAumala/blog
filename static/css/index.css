@@ -9,6 +9,7 @@ body {
   max-width: 720px;
 }
 
+
 h1 {
   font-size: 3.5rem;
 }
@@ -22,24 +23,19 @@ nav {
   text-align: center;
 }
 
-nav a {
-  margin-left: 1rem;
-}
-
-nav img {
-  height: 2rem;
-  width: 2rem;
+nav a svg {
+  height: 1.7rem;
+  width: 1.7rem;
   vertical-align: middle;
 }
 
-nav img.icon {
-  height: 1.7rem;
-  width: 1.7rem;
+#home {
+  display: none;
 }
 
-nav img.icon-rss {
-  height: 1.4rem;
-  width: 1.4rem;
+nav a {
+  margin-left: 1rem;
+  text-decoration: none;
 }
 
 h3 {
@@ -47,7 +43,7 @@ h3 {
   margin: 0;
 }
 
-h3 a:link, h3 a:visited { color: #000 }
+h3 a:link, h3 a:visited { color: black }
 
 div.date {
   width: 100%;

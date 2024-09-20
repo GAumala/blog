@@ -11,20 +11,16 @@
     <title>Gabriel's Blog</title>
     <link rel="stylesheet" href="/css/index.css" />
     <link rel="stylesheet" href="/css/font-faces.css" />
+    <link rel="stylesheet" href="/css/dark.css" />
   </head>
   <body>
     <h1>Gabriel's Blog</h1>
     <p class="info"> Hi, I'm Gabriel, a guy in Ecuador interested in computers and
     programming. Most of my projects are open source and you can check them out
     on GitHub. Occasionally, I write stuff here.</p>
-    <nav>
-      <a href="./rss/posts.rss" title="RSS feed">
-        <img class="icon-rss" src="./assets/images/rss.svg" alt="RSS"></a>
-      <a href="https://twitter.com/gaumala987" title="Twitter profile">
-        <img class="icon" src="./assets/images/twitter.svg" alt="Twitter"></a>
-      <a href="https://github.com/GAumala" title="GitHub profile">
-        <img class="icon" src="./assets/images/github.svg" alt="GitHub"></a>
-    </nav>
+    
+    $partial("templates/nav.html")$
+
     $partial("templates/post-list.html")$
   </body>
 </html>

@@ -9,24 +9,15 @@ nav {
   text-align: center;
 }
 
-nav a {
-  margin-left: 1rem;
-}
-
-nav img {
-  height: 2rem;
-  width: 2rem;
+nav a svg {
+  height: 1.7rem;
+  width: 1.7rem;
   vertical-align: middle;
 }
 
-nav img.icon {
-  height: 1.7rem;
-  width: 1.7rem;
-}
-
-nav img.icon-rss {
-  height: 1.4rem;
-  width: 1.4rem;
+nav a {
+  margin-left: 1rem;
+  text-decoration: none;
 }
 
 h1.post-title {

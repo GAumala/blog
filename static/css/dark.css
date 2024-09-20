@@ -1,0 +1,32 @@
+p a {
+  color: #23769c;
+}
+
+.svg-icon {
+  color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1c1c1c;
+    color: white;
+  }
+
+  h3 a:link, h3 a:visited { color: white }
+
+  div.date span {
+    background-color: #1c1c1c;
+  }
+
+  .svg-icon {
+    color: white;
+  }
+
+  p a {
+    color: #38BDF8;
+  }
+
+  img {
+    opacity: .75;
+  }
+}
