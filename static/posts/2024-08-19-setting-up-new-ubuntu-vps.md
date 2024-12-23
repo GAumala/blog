@@ -203,10 +203,17 @@ ufw allow 8080
 Sometimes you might want to allow incoming traffc only for a specific IP address.
 For example, if I'm using this VPS to deploy a Postgres database (port 5432),
 I would like the firewall to only allow my application server (address
-107.168.0.11) to access it. To do that, just run:
+107.168.0.11) to access it. To do that, I just run:
 
 ``` bash
-ufw allow from 107.168.0.11 to any port 22
+ufw allow from 107.168.0.11 to any port 5432
+```
+
+On the other hand, if the application server denied all outgoing traffic, I 
+can allow access to the database server with:
+
+``` bash
+ufw allow out from any to 107.168.0.10 port 5432
 ```
 
 Finally enable your firewall with:
