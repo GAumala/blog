@@ -102,9 +102,10 @@ contents of `/root/.ssh/authorized_keys` but make sure the new user can read it!
 
 ### Setup Git repositories
 
-Git lets you use SSH urls, so you can use your VPS as a remote repository.
-I use this frecuently to backup my private repositories. Git is already installed
-in Ubuntu, so to do this just create a directory and initialize a repository in it:
+Git lets you use SSH urls for remote repositories, so you can push your code 
+into your VPS. I use this frecuently to backup my private repositories. Git is
+already installed in Ubuntu, so to do this just create a directory and
+initialize a bare repository in it:
 
 ``` bash
 su -l gabriel
@@ -112,13 +113,37 @@ mkdir MyProject.git
 git init --bare MyProject.git
 ```
 
-The directory `MyProject.git` must be writeable for the user that will
-SSH into your VPS every time you want to `git push`. For this example the SSH
-URL would be:
+Bare repositories only have the default branch, which is `master`. If you
+attempt to push to any other branch it will fail. This is a common issue
+because nowadays most repositories use `main` as the default branch. 
+A good solution for this is to change the default branch name to `main`
+**before** creating any repositories:
+
+``` bash
+git config --global init.defaultBranch main
+```
+
+To push into the new `MyProject.git` directory, the url would be:
 
 ```
 ssh://gabriel@my-vps.com:/home/gabriel/MyProject.git
 ```
+
+Don't forget that `MyProject.git` must be writeable for the user that will
+SSH into your VPS every time you want to `git push`. This is the reason
+why I used `su -l gabriel` before creating the repository. 
+
+Please note that `MyProject.git` is not the root of the repository. If you
+want to browse the repository files you must checkout those files into an
+existing directory like this:
+
+```
+git --work-dir=/home/gabriel/MyProject --git-dir=/home/gabriel/MyProject.git checkout -f
+```
+
+This is useful for deploying web applications to your VPS. For most projects
+it's astronomically faster to just push source files with git than uploading
+huge binary files. 
 
 ### Setup OpenVPN
 
