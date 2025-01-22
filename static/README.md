@@ -30,9 +30,9 @@ location / {
 }
 ```
 
-To deploy static site use `scp`:
+To deploy static site use `rsync`:
 
 ```
 stack exec site build
-scp -r _site/* root@gaumala.com:/var/www/html/
+rsync -aP _site/ root@gaumala.com:/var/www/html/
 ```
