@@ -71,5 +71,5 @@ myFeedConfiguration = FeedConfiguration
     , feedDescription = "My latest blog posts"
     , feedAuthorName  = "Gabriel"
     , feedAuthorEmail = ""
-    , feedRoot        = "https://gaumala.com"
+    , feedRoot        = "https://aumala.dev"
     }

@@ -1,9 +1,34 @@
 ## Development
 
+1. Build the Docker image
+
 ```
-stack exec site watch
+docker build -t hakyll-blog .
 ```
 
+2. Start the development environment
+
+```
+docker run -it --rm -p 8000:8000 -v "$(pwd)":/home/blogger/blog hakyll-blog
+
+```
+
+3. Inside the container
+
+First-time setup:
+
+```bash
+stack setup  # Only needed when creating a new container
+stack build  # Only needed if compiled binaries aren't already cached
+```
+
+To start the live preview server:
+
+```bash
+stack exec site -- watch --host 0.0.0.0
+```
+**Note:** The `--host 0.0.0.0` parameter is required to make the server 
+accessible from your host machine.
 
 ## Deployment
 
@@ -34,5 +59,5 @@ To deploy static site use `rsync`:
 
 ```
 stack exec site build
-rsync -aP _site/ root@gaumala.com:/var/www/html/
+rsync -aP _site/ root@aumala.dev:/var/www/html/
 ```
