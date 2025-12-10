@@ -1,18 +1,11 @@
 ## Development
 
-1. Build the Docker image
+Use distrbox
 
 ```
-docker build -t hakyll-blog .
+distrobox create --image docker.io/haskell:9 --aditional-packages "pkg-config" -n hakyll-blog
+distrobox enter hakyll-blog
 ```
-
-2. Start the development environment
-
-```
-docker run -it --rm -p 8000:8000 -v "$(pwd)":/home/blogger/blog hakyll-blog
-
-```
-
 3. Inside the container
 
 First-time setup:
